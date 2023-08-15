@@ -112,9 +112,10 @@ class Session:
         base_path = self.get_path(local_or_remote, processing_level)
 
         if processing_level == 'processed':
-            base_path += '_epyhs'
+            return os.path.join(base_path, f"{self.folder_name}_epyhs")
+        else:
+            return base_path
 
-        return base_path
 
     def get_behavior_folder_path(self, local_or_remote: str, processing_level: str) -> str:
         base_path = self.get_path(local_or_remote, processing_level)
