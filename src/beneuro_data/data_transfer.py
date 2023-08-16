@@ -99,7 +99,7 @@ class Session:
             ]
 
         if load_behavior:
-            self.behavioral_recording = BehavioralData(self)
+            self.behavioral_data = BehavioralData(self)
 
     @property
     def date_str(self):
