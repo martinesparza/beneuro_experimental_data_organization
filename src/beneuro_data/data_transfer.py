@@ -224,14 +224,13 @@ class EphysRecording:
         # each probe should have its own output folder
         output_folder_name = f"{self.folder_name}_{ap_stream_name.split('.')[0]}"
         output_path = os.path.join(self.get_path('local', 'processed'), output_folder_name)
-
         if not os.path.exists(output_path):
             make_folder('local', output_path)
 
         sorting_KS3 = run_kilosort_on_stream(
             input_folder = self.get_path('local', 'raw'),
             stream_name = ap_stream_name,
-            output_folder = self.get_path('local', 'processed'),
+            output_folder = output_path,
             clean_up_temp_files = clean_up_temp_files,
             sorter_params = sorter_params,
         )
