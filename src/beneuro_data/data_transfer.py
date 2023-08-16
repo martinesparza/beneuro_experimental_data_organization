@@ -49,7 +49,9 @@ class Subject:
             if os.path.splitext(filename)[1] == '.profile':
                 continue
             
-            Session.validate_folder_name(filename, self.name)
+            Session._validate_folder_name(filename, self.name)
+
+        return True
 
     def list_local_session_folders(self, processing_level: str) -> list[str]:
         base_path = self.get_path('local', processing_level)
@@ -81,24 +83,49 @@ class Subject:
 class Session:
     date_format: str = '%Y_%m_%d_%H_%M'
 
-    def __init__(self, subject: Subject, folder_name: str):
-        # raise error if the folder_name doesn't match the expected format
-        Session.validate_folder_name(folder_name, subject.name)
-
+    def __init__(self, subject: Subject, folder_name: str, load_ephys: bool = True, load_behavior: bool = True):
         self.subject = subject
-        self.date_str = Session.extract_date_str(folder_name, subject.name)
-        self.date = Session.parse_date(self.date_str)
+        date_str = Session.extract_date_str(folder_name, subject.name)
+        self.date = datetime.strptime(date_str, Session.date_format)
+
+        self.validate_folder_name(folder_name)
 
         # again, local and raw are the source of truth
         # can't upload what's not on the local machine
-        self.ephys_recordings = [EphysRecording(self, foldername) for foldername in self.list_local_ephys_folders('raw')]
+        if load_ephys:
+            self.ephys_recordings = [
+                EphysRecording(self, foldername)
+                for foldername in self.list_local_ephys_folders('raw')
+            ]
+
+        if load_behavior:
+            self.behavioral_recording = BehavioralData(self)
+
+    @property
+    def date_str(self):
+        return self.date.strftime(Session.date_format)
 
     @property
     def folder_name(self):
         return f'{self.subject.name}_{self.date_str}'
 
+    def validate_folder_name(self, folder_name: str) -> bool:
+        if folder_name != self.folder_name:
+            raise ValueError(f'Folder name {folder_name} does not match expected format {self.folder_name}')
+
+        return True
+
     @staticmethod
-    def validate_folder_name(folder_name: str, subject_name: str) -> bool:
+    def extract_date_str(folder_name: str, subject_name: str) -> str:
+        # validate folder name first
+        Session._validate_folder_name(folder_name, subject_name)
+
+        date_str = folder_name[len(subject_name)+1:]
+
+        return date_str
+
+    @staticmethod
+    def _validate_folder_name(folder_name: str, subject_name: str) -> bool:
         if not folder_name.startswith(subject_name):
             raise ValueError(f"Folder name has to start with subject name. Got {folder_name} with subject name {subject_name}")
 
@@ -123,17 +150,6 @@ class Session:
 
         return True
 
-    @staticmethod
-    def extract_date_str(folder_name: str, subject_name: str) -> str:
-        assert folder_name.startswith(subject_name)
-
-        date_str = folder_name[len(subject_name)+1:]
-
-        return date_str
-
-    @staticmethod
-    def parse_date(date_str: str) -> datetime:
-        return datetime.strptime(date_str, Session.date_format)
 
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         return os.path.join(self.subject.get_path(local_or_remote, processing_level), self.folder_name)
@@ -177,29 +193,6 @@ class Session:
             
         return matching_folders
 
-    def _list_local_files_with_extension(self, extension: str, filter_small_files: bool, threshold_kilobytes: float) -> list[str]:
-        base_dir = self.get_path('local', 'raw')
-
-        found_filenames = [
-            filename
-            for filename in os.listdir(base_dir)
-            if os.path.splitext(filename)[1] == extension
-        ]
-
-        if filter_small_files:
-            found_filenames = [
-                filename
-                for filename in found_filenames
-                if get_file_size_in_kilobytes(os.path.join(base_dir, filename)) > threshold_kilobytes
-            ]
-
-        return found_filenames
-
-    def list_local_pca_files(self, filter_small_files: bool, threshold_kilobytes: float = 0.5) -> list[str]:
-        return self._list_local_files_with_extension('.pca', filter_small_files, threshold_kilobytes)
-
-    def list_local_txt_files(self, filter_small_files: bool, threshold_kilobytes: float = 0.5) -> list[str]:
-        return self._list_local_files_with_extension('.txt', filter_small_files, threshold_kilobytes)
 
 
 class EphysRecording:
@@ -209,8 +202,7 @@ class EphysRecording:
         # self.gid is g0 or g1 etc.
         self.gid = SPIKEGLX_RECORDING_PATTERN.search(folder_name).group(0)[1:]
         
-        if folder_name != self.folder_name:
-            raise ValueError(f'Folder name {folder_name} does not match expected format {self.folder_name}')
+        self.validate_folder_name(folder_name)
 
     def __repr__(self) -> str:
         return f'EphysRecording(session={self.session.folder_name}, gid={self.gid})'
@@ -218,6 +210,12 @@ class EphysRecording:
     @property
     def folder_name(self):
         return f'{self.session.subject.name}_{self.session.date_str}_{self.gid}'
+
+    def validate_folder_name(self, folder_name: str) -> bool:
+        if folder_name != self.folder_name:
+            raise ValueError(f'Folder name {folder_name} does not match expected format {self.folder_name}')
+
+        return True
 
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         parent_path = self.session.get_elphys_folder_path(local_or_remote, processing_level)
