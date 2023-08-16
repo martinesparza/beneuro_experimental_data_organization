@@ -1,6 +1,5 @@
 import os
 import re
-import warnings
 from datetime import datetime
 from typing import Optional
 
@@ -44,6 +43,14 @@ class Subject:
     def make_folder(self, local_or_remote: str, processing_level: str):
         return make_folder(local_or_remote, self.get_path(local_or_remote, processing_level))
 
+    def validate_local_session_folders(self, processing_level: str):
+        for filename in os.listdir(self.get_path('local', processing_level)):
+            # .profile file is fine to have
+            if os.path.splitext(filename)[1] == '.profile':
+                continue
+            
+            Session.validate_folder_name(filename, self.name)
+
     def list_local_session_folders(self, processing_level: str) -> list[str]:
         base_path = self.get_path('local', processing_level)
 
@@ -75,6 +82,9 @@ class Session:
     date_format: str = '%Y_%m_%d_%H_%M'
 
     def __init__(self, subject: Subject, folder_name: str):
+        # raise error if the folder_name doesn't match the expected format
+        Session.validate_folder_name(folder_name, subject.name)
+
         self.subject = subject
         self.date_str = Session.extract_date_str(folder_name, subject.name)
         self.date = Session.parse_date(self.date_str)
@@ -87,6 +97,44 @@ class Session:
     def folder_name(self):
         return f'{self.subject.name}_{self.date_str}'
 
+    @staticmethod
+    def validate_folder_name(folder_name: str, subject_name: str) -> bool:
+        if not folder_name.startswith(subject_name):
+            raise ValueError(f"Folder name has to start with subject name. Got {folder_name} with subject name {subject_name}")
+
+        if folder_name[len(subject_name)] != '_':
+            raise ValueError(f"Folder name has to have an underscore after subject name. Got {folder_name}.")
+
+        date_str = folder_name[len(subject_name)+1:]
+        Session._validate_time_format(date_str)
+
+        return True
+
+    @staticmethod
+    def _validate_time_format(time_str: str) -> bool:
+        # parsing the string to datetime, then generating the correctly formatted string to compare to
+        try:
+            correct_str = datetime.strptime(time_str, Session.date_format).strftime(Session.date_format)
+        except ValueError:
+            raise ValueError(f"{time_str} doesn't match expected format of {Session.date_format}")
+
+        if time_str != correct_str:
+            raise ValueError(f"{time_str} doesn't match expected format of {correct_str}")
+
+        return True
+
+    @staticmethod
+    def extract_date_str(folder_name: str, subject_name: str) -> str:
+        assert folder_name.startswith(subject_name)
+
+        date_str = folder_name[len(subject_name)+1:]
+
+        return date_str
+
+    @staticmethod
+    def parse_date(date_str: str) -> datetime:
+        return datetime.strptime(date_str, Session.date_format)
+
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         return os.path.join(self.subject.get_path(local_or_remote, processing_level), self.folder_name)
 
@@ -96,18 +144,6 @@ class Session:
     def make_folder(self, local_or_remote: str, processing_level: str):
         return make_folder(local_or_remote, self.get_path(local_or_remote, processing_level))
 
-    def extract_date_str(session_folder_name: str, subject_name: str) -> str:
-        assert session_folder_name.startswith(subject_name)
-
-        date_str = session_folder_name[len(subject_name):]
-        if date_str[0] == '_':
-            date_str = date_str[1:]
-
-        return date_str
-
-    def parse_date(date_str: str):
-        return datetime.strptime(date_str, Session.date_format)
-
     def get_elphys_folder_path(self, local_or_remote: str, processing_level: str) -> str:
         base_path = self.get_path(local_or_remote, processing_level)
 
@@ -115,7 +151,6 @@ class Session:
             return os.path.join(base_path, f"{self.folder_name}_epyhs")
         else:
             return base_path
-
 
     def get_behavior_folder_path(self, local_or_remote: str, processing_level: str) -> str:
         base_path = self.get_path(local_or_remote, processing_level)
@@ -148,7 +183,7 @@ class Session:
         found_filenames = [
             filename
             for filename in os.listdir(base_dir)
-            if filename.endswith(extension)
+            if os.path.splitext(filename)[1] == extension
         ]
 
         if filter_small_files:
@@ -175,7 +210,7 @@ class EphysRecording:
         self.gid = SPIKEGLX_RECORDING_PATTERN.search(folder_name).group(0)[1:]
         
         if folder_name != self.folder_name:
-            warnings.warn(f'Folder name {folder_name} does not match expected format {self.folder_name}')
+            raise ValueError(f'Folder name {folder_name} does not match expected format {self.folder_name}')
 
     def __repr__(self) -> str:
         return f'EphysRecording(session={self.session.folder_name}, gid={self.gid})'
@@ -200,7 +235,7 @@ class EphysRecording:
 
     @property
     def ap_streams(self):
-        stream_names, stream_ids = se.get_neo_streams('spikeglx', self.get_path('local', 'raw'))
+        stream_names, _ = se.get_neo_streams('spikeglx', self.get_path('local', 'raw'))
         return [stream_name for stream_name in stream_names if stream_name.endswith('ap')]
 
     @property
