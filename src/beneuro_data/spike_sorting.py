@@ -7,6 +7,7 @@ import pathlib
 
 from typing import Optional
 
+
 def run_kilosort_on_stream(
     input_folder: str,
     stream_name: str,
@@ -32,27 +33,28 @@ def run_kilosort_on_stream(
     sorting: SortingExtractor
     """
 
-    recording = se.read_spikeglx(input_folder, stream_name = stream_name)
+    recording = se.read_spikeglx(input_folder, stream_name=stream_name)
 
     if sorter_params is None:
         sorter_params = {}
 
-    sorting_KS3 = ss.run_kilosort3(recording,
-                                   output_folder = output_folder,
-                                   #docker_image = "spikeinterface/kilosort3-compiled-base:latest",
-                                   docker_image = True,
-                                   **sorter_params)
+    sorting_KS3 = ss.run_kilosort3(
+        recording,
+        output_folder=output_folder,
+        # docker_image = "spikeinterface/kilosort3-compiled-base:latest",
+        docker_image=True,
+        **sorter_params,
+    )
 
     if clean_up_temp_files:
-        temp_files_to_delete = \
-            list(pathlib.Path(output_folder, 'sorter_output').glob('*.mat')) + \
-            list(pathlib.Path(output_folder, 'sorter_output').glob('*.dat'))
+        temp_files_to_delete = list(
+            pathlib.Path(output_folder, "sorter_output").glob("*.mat")
+        ) + list(pathlib.Path(output_folder, "sorter_output").glob("*.dat"))
 
         for f in temp_files_to_delete:
             f.unlink()
 
     return sorting_KS3
-
 
 
 def preprocess_recording(
@@ -88,17 +90,16 @@ def preprocess_recording(
     - All possible preprocessing steps: https://spikeinterface.readthedocs.io/en/latest/api.html#module-spikeinterface.preprocessing
     - Alternative common preprocessing pipelines we can implement: https://spikeinterface.readthedocs.io/en/latest/modules/preprocessing.html#how-to-implement-ibl-destriping-or-spikeglx-catgt-in-spikeinterface
     """
-    rec1 = sip.highpass_filter(recording, freq_min = 400.)
+    rec1 = sip.highpass_filter(recording, freq_min=400.0)
 
     bad_channel_ids, channel_labels = sip.detect_bad_channels(rec1)
     if verbose:
-        logging.warning(f'bad_channel_ids: {bad_channel_ids}')
+        logging.warning(f"bad_channel_ids: {bad_channel_ids}")
 
     rec2 = rec1.remove_channels(bad_channel_ids)
 
     rec3 = sip.phase_shift(rec2)
 
-    rec4 = sip.common_reference(rec3, operator = "median", reference = "global")
+    rec4 = sip.common_reference(rec3, operator="median", reference="global")
 
     return rec4
-    

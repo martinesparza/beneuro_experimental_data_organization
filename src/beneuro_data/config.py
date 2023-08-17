@@ -1,5 +1,6 @@
 from pydantic import BaseSettings, SecretStr
 
+
 class Config(BaseSettings):
     USERNAME: str
     PASSWORD: SecretStr

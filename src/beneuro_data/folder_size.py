@@ -5,6 +5,7 @@ def get_file_size_in_kilobytes(file_path: str) -> float:
     """Return the size of a file in kilobytes."""
     return os.path.getsize(file_path) / 1024
 
+
 def get_folder_size_in_kilobytes(folder_path: str) -> float:
     """Return the size of a folder in kilbytes."""
     total_size = 0
@@ -15,9 +16,11 @@ def get_folder_size_in_kilobytes(folder_path: str) -> float:
 
     return total_size
 
+
 def get_folder_size_in_megabytes(folder_path: str) -> float:
     """Return the size of a folder in megabytes."""
     return get_folder_size_in_kilobytes(folder_path) / 1024
+
 
 def get_folder_size_in_gigabytes(folder_path: str) -> float:
     """Return the size of a folder in gigabytes."""
