@@ -18,6 +18,7 @@ config = Config()
 
 # Regex pattern to match folder names ending with "_gx" where x is any integer.
 SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
+HIDDEN_FILE_PATTERN = r"^\."
 
 
 class Subject:
@@ -58,6 +59,9 @@ class Subject:
         for filename in os.listdir(self.get_path("local", processing_level)):
             # .profile file is fine to have
             if os.path.splitext(filename)[1] == ".profile":
+                continue
+            # hidden files are also okay
+            if re.match(HIDDEN_FILE_PATTERN, filename):
                 continue
 
             Session._validate_folder_name(filename, self.name)
