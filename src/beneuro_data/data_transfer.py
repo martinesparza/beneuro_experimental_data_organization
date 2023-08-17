@@ -315,35 +315,48 @@ class EphysRecording:
 
 
 class BehavioralData:
+    pycontrol_ending_pattern_per_extension = {
+        ".pca": rf"_MotSen\d-(X|Y)\.pca",
+        ".txt": r"\.txt",
+    }
+
     def __init__(self, session: Session):
         self.session = session
+        self.validate_pycontrol_files()
 
-        self.pycontrol_pattern = rf"^{session.subject.name}_{re.escape(session.date_str)}-"
-        # self.pycontrol_pattern += rf'{session.date.strftime("%Y-%m-%d")}-\d{{6}}' # this or the next one
-        self.pycontrol_pattern += (
-            r".*"  # this or the previous one. this if we don't care about the middle
+    @property
+    def pycontrol_start_pattern(self) -> str:
+        start_pattern = rf"^{self.session.subject.name}_{re.escape(self.session.date_str)}-"
+        # middle_pattern = rf'{self.session.date.strftime("%Y-%m-%d")}-\d{{6}}'
+        middle_pattern = r".*"
+
+        return start_pattern + middle_pattern
+
+    @property
+    def _pycontrol_extensions(self):
+        return list(self.pycontrol_ending_pattern_per_extension.keys())
+
+    def validate_pycontrol_files(self) -> bool:
+        # validate that pycontrol files are named correctly
+        for filename in os.listdir(self.get_path("local", "raw")):
+            for ext in self._pycontrol_extensions:
+                if os.path.splitext(filename)[1] == ext:
+                    self._validate_pycontrol_filename(ext, filename)
+
+        return True
+
+    def _validate_pycontrol_filename(self, extension: str, filename: str) -> bool:
+        pattern = (
+            self.pycontrol_start_pattern
+            + self.pycontrol_ending_pattern_per_extension[extension]
         )
 
-        self.pycontrol_pca_pattern = self.pycontrol_pattern + rf"_MotSen\d-(X|Y)\.pca"
-        self.pycontrol_txt_pattern = self.pycontrol_pattern + rf"\.txt"
+        if re.match(pattern, filename) is None:
+            raise ValueError(
+                f"Filename {filename} does not match expected pattern for PyControl {extension} files"
+            )
 
-        # validate that txt and pca files are named correctly
-        for filename in os.listdir(self.get_path("local", "raw")):
-            if os.path.splitext(filename)[1] == ".pca":
-                if re.match(self.pycontrol_pca_pattern, filename) is None:
-                    raise ValueError(
-                        f"Filename {filename} does not match expected pattern for PyControl .pca files"
-                    )
-
-            if os.path.splitext(filename)[1] == ".txt":
-                if re.match(self.pycontrol_txt_pattern, filename) is None:
-                    raise ValueError(
-                        f"Filename {filename} does not match expected pattern for PyControl .txt files"
-                    )
-
-            # don't care about any other files
-            if os.path.splitext(filename)[1] not in {".pca", ".txt"}:
-                continue
+        return True
 
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         return self.session.get_behavior_folder_path(local_or_remote, processing_level)
