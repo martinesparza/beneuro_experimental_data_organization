@@ -11,6 +11,8 @@ from beneuro_data.folder_size import (
     get_file_size_in_kilobytes,
     get_folder_size_in_gigabytes,
 )
+from beneuro_data.config import config
+from beneuro_data.folder_size import get_folder_size_in_gigabytes
 from beneuro_data.folder_io import folder_exists, make_folder
 from beneuro_data.spike_sorting import run_kilosort_on_stream
 

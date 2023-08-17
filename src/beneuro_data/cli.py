@@ -1,7 +1,7 @@
 import typer
 
 from beneuro_data.data_transfer import Subject
-from beneuro_data.config import Config
+from beneuro_data.config import config
 
 app = typer.Typer()
 
@@ -15,5 +15,4 @@ def validate_structure(subject_name: str):
 
 @app.command()
 def show_config():
-    config = Config()
     typer.echo(config.json(indent=4))

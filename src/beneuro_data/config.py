@@ -11,3 +11,6 @@ class Config(BaseSettings):
 
     class Config:
         env_file = ".env"
+
+
+config = Config()
