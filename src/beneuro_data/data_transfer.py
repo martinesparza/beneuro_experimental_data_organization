@@ -324,9 +324,19 @@ class BehavioralData:
         ".txt": r"\.txt",
     }
 
+    expected_number_of_pycontrol_files_per_extension = {
+        ".pca": 2,
+        ".txt": 1,
+    }
+
+    pycontrol_py_foldername = "run_task-task_files"
+
     def __init__(self, session: Session):
         self.session = session
         self.validate_pycontrol_files()
+
+    def get_path(self, local_or_remote: str, processing_level: str) -> str:
+        return self.session.get_behavior_folder_path(local_or_remote, processing_level)
 
     @property
     def pycontrol_start_pattern(self) -> str:
@@ -341,11 +351,42 @@ class BehavioralData:
         return list(self.pycontrol_ending_pattern_per_extension.keys())
 
     def validate_pycontrol_files(self) -> bool:
+        self._validate_pycontrol_filenames()
+        self._validate_number_of_pycontrol_files()
+        self._validate_only_one_pycontrol_task_py_file()
+
+        return True
+
+    def _validate_pycontrol_filenames(self) -> bool:
         # validate that pycontrol files are named correctly
         for filename in os.listdir(self.get_path("local", "raw")):
             for ext in self._pycontrol_extensions:
                 if os.path.splitext(filename)[1] == ext:
                     self._validate_pycontrol_filename(ext, filename)
+
+        return True
+
+    def _validate_number_of_pycontrol_files(self) -> bool:
+        for ext in self._pycontrol_extensions:
+            self._validate_number_of_pycontrol_files_with_extension(ext)
+
+        return True
+
+    def _validate_number_of_pycontrol_files_with_extension(self, extension: str) -> bool:
+        expected_number_of_files = self.expected_number_of_pycontrol_files_per_extension[
+            extension
+        ]
+
+        matching_filenames = [
+            fname
+            for fname in os.listdir(self.get_path("local", "raw"))
+            if os.path.splitext(fname)[1] == extension
+        ]
+
+        if len(matching_filenames) != expected_number_of_files:
+            raise ValueError(
+                f"Expected {expected_number_of_files} files with extension {extension}, but found {len(matching_filenames)}"
+            )
 
         return True
 
@@ -362,8 +403,36 @@ class BehavioralData:
 
         return True
 
-    def get_path(self, local_or_remote: str, processing_level: str) -> str:
-        return self.session.get_behavior_folder_path(local_or_remote, processing_level)
+    def _validate_only_one_pycontrol_task_py_file(self) -> bool:
+        self._validate_pycontrol_task_folder_exists()
 
-    def get_pycontrol_py_file(self):
-        raise NotImplementedError
+        pycontrol_py_folder_path = self._get_pycontrol_py_folder_path()
+
+        python_filenames = [
+            fname
+            for fname in os.listdir(pycontrol_py_folder_path)
+            if os.path.splitext(fname)[1] == ".py"
+        ]
+
+        if len(python_filenames) == 0:
+            raise FileNotFoundError(
+                f"Could not find any .py files in {pycontrol_py_folder_path}"
+            )
+
+        if len(python_filenames) > 1:
+            raise ValueError(f"Found more than one .py files in {pycontrol_py_folder_path}")
+
+        return True
+
+    def _validate_pycontrol_task_folder_exists(self) -> bool:
+        pycontrol_py_folder_path = self._get_pycontrol_py_folder_path()
+
+        if not os.path.exists(pycontrol_py_folder_path):
+            raise FileNotFoundError(
+                f"Could not find PyControl task folder {pycontrol_py_folder_path}"
+            )
+
+        return True
+
+    def _get_pycontrol_py_folder_path(self):
+        return os.path.join(self.get_path("local", "raw"), self.pycontrol_py_foldername)
