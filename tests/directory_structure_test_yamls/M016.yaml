@@ -1,0 +1,61 @@
+type: folder
+name: M016
+children:
+- type: folder
+  name: M016_2023_08_15_16_00
+  children:
+  - type: file
+    name: M016_2023_08_15_16_00-2023-08-15-161533.txt
+  - type: file
+    name: M016_2023_08_15_16_00-2023-08-15-161533_MotSen1-X.pca
+  - type: folder
+    name: run_task-task_files
+    children:
+    - type: file
+      name: 0-lick-triggered-reward_815839429.py
+  - type: file
+    name: M016_2023_08_15_16_00-2023-08-15-161533_MotSen1-Y.pca
+- type: folder
+  name: M016_2023_08_10_14_00
+  children:
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141016.txt
+  - type: file
+    name: .DS_Store
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141028_MotSen1-Y.pca
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141016_MotSen1-X.pca
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141028.txt
+  - type: folder
+    name: run_task-task_files
+    children:
+    - type: file
+      name: 0-lick-triggered-reward_815839429.py
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141028_MotSen1-X.pca
+  - type: file
+    name: M016_2023_08_10_14_00-2023-08-10-141016_MotSen1-Y.pca
+- type: folder
+  name: M016_2023_08_16_16_00
+  children:
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-160654.txt
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-160654_MotSen1-X.pca
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-155731_MotSen1-X.pca
+  - type: folder
+    name: run_task-task_files
+    children:
+    - type: file
+      name: 1-led-reward-association_2312060213.py
+    - type: file
+      name: 0-lick-triggered-reward_815839429.py
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-160654_MotSen1-Y.pca
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-155731_MotSen1-Y.pca
+  - type: file
+    name: M016_2023_08_16_16_00-2023-08-16-155731.txt
