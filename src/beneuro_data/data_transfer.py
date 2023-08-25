@@ -19,8 +19,21 @@ HIDDEN_FILE_PATTERN = r"^\."
 
 
 class Subject:
-    def __init__(self, name: str, load_sessions: bool = True):
+    def __init__(
+        self,
+        name: str,
+        load_sessions: bool = True,
+        local_base_path: Optional[str] = None,
+        remote_base_path: Optional[str] = None,
+    ):
         self.name = name
+
+        self.LOCAL_PATH = (
+            local_base_path if local_base_path is not None else config.LOCAL_PATH
+        )
+        self.REMOTE_PATH = (
+            remote_base_path if remote_base_path is not None else config.REMOTE_PATH
+        )
 
         # NOTE treat local raw sessions as the source of truth
         # if it's not on the local machine, it can't be uploaded
@@ -38,7 +51,7 @@ class Subject:
             raise ValueError(f"Invalid processing_level {processing_level}")
 
         # base_path = getattr(config, f'{local_or_remote.upper()}_PATH')
-        base_path = config.LOCAL_PATH if local_or_remote == "local" else config.REMOTE_PATH
+        base_path = self.LOCAL_PATH if local_or_remote == "local" else self.REMOTE_PATH
 
         return os.path.join(base_path, processing_level, self.name)
 
