@@ -16,3 +16,7 @@ def validate_structure(subject_name: str):
 @app.command()
 def show_config():
     typer.echo(config.json(indent=4))
+
+
+if __name__ == "__main__":
+    app()
