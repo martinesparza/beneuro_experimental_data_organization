@@ -1,22 +1,17 @@
 import os
 import re
+import warnings
 from datetime import datetime
 from typing import Optional
 
 from fabric import Connection
 import spikeinterface.extractors as se
 
-from beneuro_data.config import Config
-from beneuro_data.folder_size import (
-    get_file_size_in_kilobytes,
-    get_folder_size_in_gigabytes,
-)
 from beneuro_data.config import config
 from beneuro_data.folder_size import get_folder_size_in_gigabytes
 from beneuro_data.folder_io import folder_exists, make_folder
 from beneuro_data.spike_sorting import run_kilosort_on_stream
-
-config = Config()
+from beneuro_data.console import console
 
 # Regex pattern to match folder names ending with "_gx" where x is any integer.
 SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
@@ -321,6 +316,8 @@ class EphysRecording:
 
 
 class BehavioralData:
+    # TODO: If I just copy the run_tak-task_files folder, I don't have to care about different structures locally and on the server
+
     pycontrol_ending_pattern_per_extension = {
         ".pca": rf"_MotSen\d-(X|Y)\.pca",
         ".txt": r"\.txt",
@@ -355,7 +352,14 @@ class BehavioralData:
     def validate_pycontrol_files(self) -> bool:
         self._validate_pycontrol_filenames()
         self._validate_number_of_pycontrol_files()
-        self._validate_only_one_pycontrol_task_py_file()
+
+        if self._pycontrol_task_folder_exists():
+            self._validate_only_one_pycontrol_task_py_file()
+        else:
+            console.log(
+                f"No PyControl task folder found in {self.get_path('local', 'raw')}\n",
+                style="yellow",
+            )
 
         return True
 
@@ -426,12 +430,13 @@ class BehavioralData:
 
         return True
 
-    def _validate_pycontrol_task_folder_exists(self) -> bool:
-        pycontrol_py_folder_path = self._get_pycontrol_py_folder_path()
+    def _pycontrol_task_folder_exists(self) -> bool:
+        return os.path.exists(self._get_pycontrol_py_folder_path())
 
-        if not os.path.exists(pycontrol_py_folder_path):
+    def _validate_pycontrol_task_folder_exists(self) -> bool:
+        if not self._pycontrol_task_folder_exists():
             raise FileNotFoundError(
-                f"Could not find PyControl task folder {pycontrol_py_folder_path}"
+                f"Could not find PyControl task folder {self._get_pycontrol_py_folder_path()}"
             )
 
         return True
