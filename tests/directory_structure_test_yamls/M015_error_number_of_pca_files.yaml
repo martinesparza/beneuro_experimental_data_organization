@@ -1,0 +1,25 @@
+type: folder
+name: M015
+children:
+- type: folder
+  name: M015_2023_08_11_15_00
+  children:
+  - type: file
+    name: .DS_Store
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151215_MotSen1-X.pca
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151227_MotSen1-Y.pca
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151215_MotSen1-Y.pca
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151227_MotSen1-X.pca
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151215.txt
+  - type: folder
+    name: run_task-task_files
+    children:
+    - type: file
+      name: 1-led-reward-association_2312060213.py
+  - type: file
+    name: M015_2023_08_11_15_00-2023-08-11-151227.txt

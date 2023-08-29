@@ -5,30 +5,27 @@ children:
   name: M011_2023_04_04_16_00
   children:
   - type: file
-    name: M011-2023-04-04-165016_MotSen1-Y.pca
-  - type: folder
-    name: Recording_2023-04-04T165007
-    children:
-    - type: file
-      name: metadata.csv
+    name: M011_2023_04_04_16_00_MotSen1-X.pca
+  - type: file
+    name: M011_2023_04_04_16_00_MotSen1-Y.pca
+  - type: file
+    name: M011_2023_04_04_16_00.txt
   - type: folder
     name: M011_2023_04_04_16_00_g1
     children:
     - type: file
       name: .DS_Store
     - type: folder
-      name: M011_2023_04_04_16_0033_g1_imec0
+      name: M011_2023_04_04_16_00_g1_imec0
       children:
       - type: file
-        name: M011_2023_04_04_16_0033_g1_t0.imec0.lf.meta
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.meta
       - type: file
-        name: M011_2023_04_04_16_0033_g1_t0.imec0.ap.meta
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.meta
       - type: file
-        name: M011_2023_04_04_16_0033_g1_t0.imec0.lf.bin
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.bin
       - type: file
-        name: M011_2023_04_04_16_0033_g1_t0.imec0.ap.bin
-  - type: file
-    name: M011-2023-04-04-165016.txt
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.bin
   - type: folder
     name: M011_2023_04_04_16_00_g0
     children:
@@ -56,5 +53,3 @@ children:
         name: M011_2023_04_04_16_00_g0_t0.imec0.ap.meta
       - type: file
         name: M011_2023_04_04_16_00_g0_t0.imec0.lf.bin
-  - type: file
-    name: M011-2023-04-04-165016_MotSen1-X.pca

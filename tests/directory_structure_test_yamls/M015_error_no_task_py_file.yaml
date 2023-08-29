@@ -1,0 +1,16 @@
+type: folder
+name: M015
+children:
+- type: folder
+  name: M015_2023_08_04_14_30
+  children:
+  - type: file
+    name: M015_2023_08_04_14_30-2023-08-04-142744_MotSen1-X.pca
+  - type: file
+    name: M015_2023_08_04_14_30-2023-08-04-142744.txt
+  - type: file
+    name: .DS_Store
+  - type: file
+    name: M015_2023_08_04_14_30-2023-08-04-142744_MotSen1-Y.pca
+  - type: folder
+    name: run_task-task_files
