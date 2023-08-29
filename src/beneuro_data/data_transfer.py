@@ -4,14 +4,11 @@ import warnings
 from datetime import datetime
 from typing import Optional
 
-from fabric import Connection
 import spikeinterface.extractors as se
 
 from beneuro_data.config import config
 from beneuro_data.folder_size import get_folder_size_in_gigabytes
-from beneuro_data.folder_io import folder_exists, make_folder
 from beneuro_data.spike_sorting import run_kilosort_on_stream
-from beneuro_data.console import console
 
 # Regex pattern to match folder names ending with "_gx" where x is any integer.
 SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
@@ -57,14 +54,10 @@ class Subject:
         return os.path.join(base_path, processing_level, self.name)
 
     def has_folder(self, local_or_remote: str, processing_level: str):
-        return folder_exists(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def make_folder(self, local_or_remote: str, processing_level: str):
-        return make_folder(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def validate_local_session_folders(self, processing_level: str):
         for filename in os.listdir(self.get_path("local", processing_level)):
@@ -79,8 +72,10 @@ class Subject:
 
         return True
 
-    def list_local_session_folders(self, processing_level: str) -> list[str]:
-        base_path = self.get_path("local", processing_level)
+    def _list_session_folders(
+        self, local_or_remote: str, processing_level: str
+    ) -> list[str]:
+        base_path = self.get_path(local_or_remote, processing_level)
 
         session_folders = []
         for filename in os.listdir(base_path):
@@ -91,25 +86,11 @@ class Subject:
 
         return session_folders
 
+    def list_local_session_folders(self, processing_level: str) -> list[str]:
+        return self._list_session_folders("local", processing_level)
+
     def list_remote_session_folders(self, processing_level: str) -> list[str]:
-        base_path = self.get_path("remote", processing_level)
-
-        session_folders = []
-        with Connection(
-            host=config.REMOTE_SERVER_ADDRESS,
-            user=config.USERNAME,
-            connect_kwargs={"password": config.PASSWORD.get_secret_value()},
-        ) as c:
-            with c.sftp() as sftp:
-                for filename in sftp.listdir(base_path):
-                    if filename.startswith(self.name):
-                        try:
-                            sftp.listdir(os.path.join(base_path, filename))
-                            session_folders.append(filename)
-                        except FileNotFoundError:
-                            pass
-
-        return session_folders
+        return self._list_session_folders("remote", processing_level)
 
 
 class Session:
@@ -209,14 +190,10 @@ class Session:
         )
 
     def has_folder(self, local_or_remote: str, processing_level: str):
-        return folder_exists(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def make_folder(self, local_or_remote: str, processing_level: str):
-        return make_folder(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def get_elphys_folder_path(self, local_or_remote: str, processing_level: str) -> str:
         base_path = self.get_path(local_or_remote, processing_level)
@@ -301,14 +278,10 @@ class EphysRecording:
         return os.path.join(parent_path, self.folder_name)
 
     def has_folder(self, local_or_remote: str, processing_level: str):
-        return folder_exists(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def make_folder(self, local_or_remote: str, processing_level: str):
-        return make_folder(
-            local_or_remote, self.get_path(local_or_remote, processing_level)
-        )
+        return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def get_raw_size_in_gigabytes(self) -> float:
         return get_folder_size_in_gigabytes(self.get_path("local", "raw"))
@@ -339,7 +312,7 @@ class EphysRecording:
         output_folder_name = f"{self.folder_name}_{ap_stream_name.split('.')[0]}"
         output_path = os.path.join(self.get_path("local", "processed"), output_folder_name)
         if not os.path.exists(output_path):
-            make_folder("local", output_path)
+            os.mkdir(output_path)
 
         sorting_KS3 = run_kilosort_on_stream(
             input_folder=self.get_path("local", "raw"),
