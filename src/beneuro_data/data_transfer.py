@@ -358,7 +358,7 @@ class BehavioralData:
 
     @property
     def pycontrol_start_pattern(self) -> str:
-        start_pattern = rf"^{self.session.subject.name}_{re.escape(self.session.date_str)}-"
+        start_pattern = rf"^{self.session.subject.name}_{re.escape(self.session.date_str)}"
         # middle_pattern = rf'{self.session.date.strftime("%Y-%m-%d")}-\d{{6}}'
         middle_pattern = r".*"
 
