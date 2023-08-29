@@ -38,6 +38,7 @@ class Subject:
         # NOTE treat local raw sessions as the source of truth
         # if it's not on the local machine, it can't be uploaded
         if load_sessions:
+            self.validate_local_session_folders("raw")
             self.local_sessions = [
                 Session(self, foldername)
                 for foldername in self.list_local_session_folders("raw")
