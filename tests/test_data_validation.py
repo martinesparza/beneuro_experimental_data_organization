@@ -28,19 +28,17 @@ class DirectoryStructureTestCase:
         return os.path.splitext(self.yaml_name)[0].split("_")[0]
 
     def run_test(self, tmp_path: pathlib.Path):
-        if issubclass(self.error_type, Warning):
+        if self.error_type is None:
+            subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
+            assert subject is not None
+
+        elif issubclass(self.error_type, Warning):
             with pytest.warns(self.error_type, match=self.error_message):
                 subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
 
         elif issubclass(self.error_type, BaseException):
             with pytest.raises(self.error_type, match=self.error_message):
                 subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
-
-        elif self.error_type is None:
-            subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
-            # assert subject is not None
-            # I don't what to do for a test that should pass
-            assert False
 
 
 def test_validation(tmp_path):
@@ -99,6 +97,11 @@ def test_validation(tmp_path):
             "M011_error_not_only_probe_folders_in_ephys_recording.yaml",
             ValueError,
             r"Only folders are allowed in the ephys recordings folder",
+        ),
+        DirectoryStructureTestCase(
+            "M011_correct.yaml",
+            None,
+            "",
         ),
     ]
 
