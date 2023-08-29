@@ -375,9 +375,8 @@ class BehavioralData:
         if self._pycontrol_task_folder_exists():
             self._validate_only_one_pycontrol_task_py_file()
         else:
-            console.log(
-                f"No PyControl task folder found in {self.get_path('local', 'raw')}\n",
-                style="yellow",
+            warnings.warn(
+                f"No PyControl task folder found in {self.get_path('local', 'raw')}\n"
             )
 
         return True
