@@ -4,11 +4,8 @@ import warnings
 from datetime import datetime
 from typing import Optional
 
-import spikeinterface.extractors as se
-
 from beneuro_data.config import config
 from beneuro_data.folder_size import get_folder_size_in_gigabytes
-from beneuro_data.spike_sorting import run_kilosort_on_stream
 
 # Regex pattern to match folder names ending with "_gx" where x is any integer.
 SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
@@ -285,44 +282,6 @@ class EphysRecording:
 
     def get_raw_size_in_gigabytes(self) -> float:
         return get_folder_size_in_gigabytes(self.get_path("local", "raw"))
-
-    @property
-    def ap_streams(self):
-        stream_names, _ = se.get_neo_streams("spikeglx", self.get_path("local", "raw"))
-        return [stream_name for stream_name in stream_names if stream_name.endswith("ap")]
-
-    @property
-    def number_of_probes(self):
-        return len(self.ap_streams)
-
-    def run_kilosort(
-        self,
-        ap_stream_name: str,
-        clean_up_temp_files: bool = False,
-        sorter_params: Optional[dict] = None,
-    ):
-        assert ap_stream_name in self.ap_streams
-        assert self.has_folder("local", "raw")
-
-        if not self.has_folder("local", "processed"):
-            self.make_folder("local", "processed")
-        assert self.has_folder("local", "processed")
-
-        # each probe should have its own output folder
-        output_folder_name = f"{self.folder_name}_{ap_stream_name.split('.')[0]}"
-        output_path = os.path.join(self.get_path("local", "processed"), output_folder_name)
-        if not os.path.exists(output_path):
-            os.mkdir(output_path)
-
-        sorting_KS3 = run_kilosort_on_stream(
-            input_folder=self.get_path("local", "raw"),
-            stream_name=ap_stream_name,
-            output_folder=output_path,
-            clean_up_temp_files=clean_up_temp_files,
-            sorter_params=sorter_params,
-        )
-
-        return sorting_KS3
 
 
 class BehavioralData:

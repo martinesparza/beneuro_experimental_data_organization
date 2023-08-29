@@ -1,11 +1,13 @@
+import os
+import logging
+import pathlib
+from typing import Optional
+
 import spikeinterface.extractors as se
 import spikeinterface.sorters as ss
 import spikeinterface.preprocessing as sip
 
-import logging
-import pathlib
-
-from typing import Optional
+from beneuro_data.data_transfer import EphysRecording
 
 
 def run_kilosort_on_stream(
@@ -103,3 +105,52 @@ def preprocess_recording(
     rec4 = sip.common_reference(rec3, operator="median", reference="global")
 
     return rec4
+
+
+class SpikeSorter:
+    def __init__(self, ephys_recording: EphysRecording):
+        self.ephys_recording = ephys_recording
+
+    @property
+    def ap_streams(self):
+        stream_names, _ = se.get_neo_streams(
+            "spikeglx", self.ephys_recording.get_path("local", "raw")
+        )
+        return [stream_name for stream_name in stream_names if stream_name.endswith("ap")]
+
+    @property
+    def number_of_probes(self):
+        return len(self.ap_streams)
+
+    def run_kilosort(
+        self,
+        ap_stream_name: str,
+        clean_up_temp_files: bool = False,
+        sorter_params: Optional[dict] = None,
+    ):
+        assert ap_stream_name in self.ap_streams
+        assert self.ephys_recording.has_folder("local", "raw")
+
+        if not self.ephys_recording.has_folder("local", "processed"):
+            self.ephys_recording.make_folder("local", "processed")
+        assert self.ephys_recording.has_folder("local", "processed")
+
+        # each probe should have its own output folder
+        output_folder_name = (
+            f"{self.ephys_recording.folder_name}_{ap_stream_name.split('.')[0]}"
+        )
+        output_path = os.path.join(
+            self.ephys_recording.get_path("local", "processed"), output_folder_name
+        )
+        if not os.path.exists(output_path):
+            os.mkdir(output_path)
+
+        sorting_KS3 = run_kilosort_on_stream(
+            input_folder=self.ephys_recording.get_path("local", "raw"),
+            stream_name=ap_stream_name,
+            output_folder=output_path,
+            clean_up_temp_files=clean_up_temp_files,
+            sorter_params=sorter_params,
+        )
+
+        return sorting_KS3
