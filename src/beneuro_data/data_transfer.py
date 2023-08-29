@@ -261,6 +261,7 @@ class EphysRecording:
         self.gid = SPIKEGLX_RECORDING_PATTERN.search(folder_name).group(0)[1:]
 
         self.validate_folder_name(folder_name)
+        self.validate_probe_folder_names()
 
     def __repr__(self) -> str:
         return f"EphysRecording(session={self.session.folder_name}, gid={self.gid})"
@@ -276,6 +277,23 @@ class EphysRecording:
             )
 
         return True
+
+    def validate_probe_folder_names(self):
+        recording_path = self.get_path("local", "raw")
+
+        for filename in os.listdir(recording_path):
+            filepath = os.path.join(recording_path, filename)
+
+            if re.match(HIDDEN_FILE_PATTERN, filename):
+                continue
+
+            if not os.path.isdir(filepath):
+                raise ValueError("Only folders are allowed in the ephys recordings folder")
+
+            if not re.match(rf"{self.folder_name}_imec\d", filename):
+                raise ValueError(
+                    f"The following folder name doesn't match the expected format for probes: {filename}"
+                )
 
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         parent_path = self.session.get_elphys_folder_path(local_or_remote, processing_level)

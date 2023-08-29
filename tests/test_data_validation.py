@@ -93,7 +93,12 @@ def test_validation(tmp_path):
         DirectoryStructureTestCase(
             "M011_error_probe_folder_name.yaml",
             ValueError,
-            r"probe's folder name doesn't match",
+            r"doesn't match the expected format for probes",
+        ),
+        DirectoryStructureTestCase(
+            "M011_error_not_only_probe_folders_in_ephys_recording.yaml",
+            ValueError,
+            r"Only folders are allowed in the ephys recordings folder",
         ),
     ]
 

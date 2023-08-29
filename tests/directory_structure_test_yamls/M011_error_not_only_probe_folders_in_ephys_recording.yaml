@@ -5,14 +5,16 @@ children:
   name: M011_2023_04_04_16_00
   children:
   - type: file
-    name: M011-2023_04_04-165016_MotSen1-X.pca
+    name: M011_2023_04_04_16_00_MotSen1-X.pca
   - type: file
-    name: M011-2023-04-04-165016_MotSen1-Y.pca
+    name: M011_2023_04_04_16_00_MotSen1-Y.pca
   - type: file
-    name: M011-2023-04-04-165016.txt
+    name: M011_2023_04_04_16_00.txt
   - type: folder
     name: M011_2023_04_04_16_00_g1
     children:
+    - type: file
+      name: file_that_should_not_be_here.asdf
     - type: file
       name: .DS_Store
     - type: folder
