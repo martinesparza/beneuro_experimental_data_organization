@@ -131,6 +131,11 @@ class Session:
         # again, local and raw are the source of truth
         # can't upload what's not on the local machine
         if load_ephys:
+            # if len(self.list_local_ephys_folders("raw")) == 0:
+            #    warnings.warn("No raw ephys data found.")
+            if len(self.list_local_ephys_folders("raw")) > 1:
+                warnings.warn("More than one raw ephys recordings found.")
+
             self.ephys_recordings = [
                 EphysRecording(self, foldername)
                 for foldername in self.list_local_ephys_folders("raw")
