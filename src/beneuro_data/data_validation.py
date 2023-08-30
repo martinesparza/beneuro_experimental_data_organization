@@ -53,7 +53,7 @@ class Subject:
     def has_folder(self, local_or_remote: str, processing_level: str) -> bool:
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
-    def make_folder(self, local_or_remote: str, processing_level: str):
+    def create_folder(self, local_or_remote: str, processing_level: str):
         return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def validate_session_folders(self, local_or_remote: str, processing_level: str) -> bool:
@@ -183,7 +183,7 @@ class Session:
     def has_folder(self, local_or_remote: str, processing_level: str):
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
-    def make_folder(self, local_or_remote: str, processing_level: str):
+    def create_folder(self, local_or_remote: str, processing_level: str):
         return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def get_elphys_folder_path(self, local_or_remote: str, processing_level: str) -> str:
@@ -273,7 +273,11 @@ class EphysRecording:
     def has_folder(self, local_or_remote: str, processing_level: str) -> bool:
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
-    def make_folder(self, local_or_remote: str, processing_level: str):
+    def create_folder(self, local_or_remote: str, processing_level: str):
+        if local_or_remote == "local" and processing_level == "raw":
+            raise ValueError(
+                "Local raw electrophysiology folder should be created by the recording software."
+            )
         return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     def get_raw_size_in_gigabytes(self) -> float:
@@ -301,6 +305,14 @@ class BehavioralData:
 
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         return self.session.get_behavior_folder_path(local_or_remote, processing_level)
+
+    def create_folder(self, local_or_remote: str, processing_level: str):
+        if (local_or_remote == "local") and (processing_level == "raw"):
+            raise ValueError(
+                "Local raw behavioral folder should be created by the recording software."
+            )
+
+        return os.mkdir(self.get_path(local_or_remote, processing_level))
 
     @property
     def pycontrol_start_pattern(self) -> str:
