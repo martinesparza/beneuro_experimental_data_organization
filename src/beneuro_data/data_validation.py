@@ -6,6 +6,7 @@ from typing import Optional
 
 from beneuro_data.config import config
 from beneuro_data.folder_size import get_folder_size_in_gigabytes
+from beneuro_data.validate_argument import validate_argument
 
 # Regex pattern to match folder names ending with "_gx" where x is any integer.
 SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
@@ -38,23 +39,31 @@ class Subject:
                 for foldername in self.list_session_folders("local", "raw")
             ]
 
-    def get_path(self, local_or_remote: str, processing_level: str) -> str:
-        if local_or_remote not in {"local", "remote"}:
-            raise ValueError(f"Invalid local_or_remote {local_or_remote}")
-
-        if processing_level not in {"raw", "processed"}:
-            raise ValueError(f"Invalid processing_level {processing_level}")
-
-        # base_path = getattr(config, f'{local_or_remote.upper()}_PATH')
+    @validate_argument("local_or_remote", {"local", "remote"})
+    @validate_argument("processing_level", {"raw", "processed"})
+    def get_parent_path(self, local_or_remote: str, processing_level: str) -> str:
         base_path = self.LOCAL_PATH if local_or_remote == "local" else self.REMOTE_PATH
 
-        return os.path.join(base_path, processing_level, self.name)
+        return os.path.join(base_path, processing_level)
+
+    @validate_argument("local_or_remote", {"local", "remote"})
+    @validate_argument("processing_level", {"raw", "processed"})
+    def get_path(self, local_or_remote: str, processing_level: str) -> str:
+        parent_path = self.get_parent_path(local_or_remote, processing_level)
+
+        return os.path.join(parent_path, self.name)
 
     def has_folder(self, local_or_remote: str, processing_level: str) -> bool:
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def create_folder(self, local_or_remote: str, processing_level: str):
-        return os.mkdir(self.get_path(local_or_remote, processing_level))
+        parent_path = self.get_parent_path(local_or_remote, processing_level)
+        own_path = self.get_path(local_or_remote, processing_level)
+        assert os.path.exists(
+            parent_path
+        ), f"Trying to create directory for subject {self.name} at {own_path}, but parent directory does not exist."
+
+        return os.mkdir(own_path)
 
     def validate_session_folders(self, local_or_remote: str, processing_level: str) -> bool:
         for filename in os.listdir(self.get_path(local_or_remote, processing_level)):
