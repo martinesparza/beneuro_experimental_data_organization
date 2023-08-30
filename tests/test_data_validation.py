@@ -8,7 +8,7 @@ from typing import Type, Optional
 
 from ruamel.yaml import YAML
 
-from beneuro_data.data_transfer import Subject
+from beneuro_data.data_validation import Subject
 
 from generate_directory_structure_test_cases import create_directory_structure_from_dict
 

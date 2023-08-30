@@ -7,7 +7,7 @@ import spikeinterface.extractors as se
 import spikeinterface.sorters as ss
 import spikeinterface.preprocessing as sip
 
-from beneuro_data.data_transfer import EphysRecording
+from beneuro_data.data_validation import EphysRecording
 
 
 def run_kilosort_on_stream(

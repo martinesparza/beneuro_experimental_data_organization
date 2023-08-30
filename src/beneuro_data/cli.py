@@ -1,6 +1,6 @@
 import typer
 
-from beneuro_data.data_transfer import Subject
+from beneuro_data.data_validation import Subject
 from beneuro_data.config import config
 
 app = typer.Typer()
