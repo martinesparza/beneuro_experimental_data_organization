@@ -124,6 +124,8 @@ class Session:
 
         if load_behavior:
             self.behavioral_data = BehavioralData(self)
+        else:
+            self.behavioral_data = None
 
     @property
     def date_str(self):
