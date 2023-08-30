@@ -32,13 +32,13 @@ class Subject:
         # NOTE treat local raw sessions as the source of truth
         # if it's not on the local machine, it can't be uploaded
         if load_sessions:
-            self.validate_local_session_folders("raw")
+            self.validate_session_folders("local", "raw")
             self.local_sessions = [
                 Session(self, foldername)
-                for foldername in self.list_local_session_folders("raw")
+                for foldername in self.list_session_folders("local", "raw")
             ]
 
-    def get_path(self, local_or_remote: str, processing_level: str):
+    def get_path(self, local_or_remote: str, processing_level: str) -> str:
         if local_or_remote not in {"local", "remote"}:
             raise ValueError(f"Invalid local_or_remote {local_or_remote}")
 
@@ -50,14 +50,14 @@ class Subject:
 
         return os.path.join(base_path, processing_level, self.name)
 
-    def has_folder(self, local_or_remote: str, processing_level: str):
+    def has_folder(self, local_or_remote: str, processing_level: str) -> bool:
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def make_folder(self, local_or_remote: str, processing_level: str):
         return os.mkdir(self.get_path(local_or_remote, processing_level))
 
-    def validate_local_session_folders(self, processing_level: str):
-        for filename in os.listdir(self.get_path("local", processing_level)):
+    def validate_session_folders(self, local_or_remote: str, processing_level: str) -> bool:
+        for filename in os.listdir(self.get_path(local_or_remote, processing_level)):
             # .profile file is fine to have
             if os.path.splitext(filename)[1] == ".profile":
                 continue
@@ -69,7 +69,7 @@ class Subject:
 
         return True
 
-    def _list_session_folders(
+    def list_session_folders(
         self, local_or_remote: str, processing_level: str
     ) -> list[str]:
         base_path = self.get_path(local_or_remote, processing_level)
@@ -82,12 +82,6 @@ class Subject:
                 session_folders.append(filename)
 
         return session_folders
-
-    def list_local_session_folders(self, processing_level: str) -> list[str]:
-        return self._list_session_folders("local", processing_level)
-
-    def list_remote_session_folders(self, processing_level: str) -> list[str]:
-        return self._list_session_folders("remote", processing_level)
 
 
 class Session:
