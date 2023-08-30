@@ -246,7 +246,7 @@ class EphysRecording:
 
         return True
 
-    def validate_probe_folder_names(self):
+    def validate_probe_folder_names(self) -> bool:
         recording_path = self.get_path("local", "raw")
 
         for filename in os.listdir(recording_path):
@@ -263,12 +263,14 @@ class EphysRecording:
                     f"The following folder name doesn't match the expected format for probes: {filename}"
                 )
 
+        return True
+
     def get_path(self, local_or_remote: str, processing_level: str) -> str:
         parent_path = self.session.get_elphys_folder_path(local_or_remote, processing_level)
 
         return os.path.join(parent_path, self.folder_name)
 
-    def has_folder(self, local_or_remote: str, processing_level: str):
+    def has_folder(self, local_or_remote: str, processing_level: str) -> bool:
         return os.path.exists(self.get_path(local_or_remote, processing_level))
 
     def make_folder(self, local_or_remote: str, processing_level: str):
