@@ -229,6 +229,12 @@ class Session:
 
         return matching_folders
 
+    def all_local_ephys_recordings_loaded(self, processing_level: str) -> bool:
+        n_loaded_ephys_recordings = len(self.ephys_recordings)
+        n_local_ephys_folders = len(self.list_local_ephys_folders(processing_level))
+
+        return n_loaded_ephys_recordings == n_local_ephys_folders
+
 
 class EphysRecording:
     def __init__(self, session: Session, folder_name: str):
