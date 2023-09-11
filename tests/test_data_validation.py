@@ -15,6 +15,31 @@ from generate_directory_structure_test_cases import create_directory_structure_f
 
 TEST_DIR_PATH = os.path.dirname(__file__)
 YAML_FOLDER = os.path.join(TEST_DIR_PATH, "directory_structure_test_yamls")
+NUM_VALID_SESSIONS_YAML_FOLDER = os.path.join(
+    TEST_DIR_PATH, "number_of_valid_sessions_test_yamls"
+)
+
+
+def _prepare_directory_structure(
+    tmp_path: pathlib.Path, yaml_folder_path: str, yaml_name: str
+):
+    tmp_raw_dir = tmp_path / "raw"
+
+    def remake_raw_dir():
+        if tmp_raw_dir.exists():
+            shutil.rmtree(tmp_raw_dir)
+
+        tmp_raw_dir.mkdir()
+
+    remake_raw_dir()
+
+    with open(os.path.join(yaml_folder_path, yaml_name), "r") as f:
+        mouse_dir_dict = YAML().load(f)
+
+    create_directory_structure_from_dict(
+        mouse_dir_dict,
+        str(tmp_raw_dir),
+    )
 
 
 @dataclass
@@ -107,22 +132,35 @@ test_cases = [
 
 @pytest.mark.parametrize("test_case", test_cases)
 def test_validation(tmp_path, test_case: DirectoryStructureTestCase):
-    tmp_raw_dir = tmp_path / "raw"
+    _prepare_directory_structure(tmp_path, YAML_FOLDER, test_case.yaml_name)
 
-    def remake_raw_dir():
-        if tmp_raw_dir.exists():
-            shutil.rmtree(tmp_raw_dir)
+    test_case.run_test(tmp_path)
 
-        tmp_raw_dir.mkdir()
 
-    remake_raw_dir()
+@dataclass
+class NumValidSessionsTestCase:
+    yaml_name: str
+    n_valid_sessions: int
 
-    with open(os.path.join(YAML_FOLDER, test_case.yaml_name), "r") as f:
-        mouse_dir_dict = YAML().load(f)
+    @property
+    def mouse_name(self) -> str:
+        return os.path.splitext(self.yaml_name)[0].split("_")[0]
 
-    create_directory_structure_from_dict(
-        mouse_dir_dict,
-        str(tmp_raw_dir),
+    def run_test(self, tmp_path: pathlib.Path):
+        subject = Subject(self.mouse_name, False, local_base_path=str(tmp_path))
+        assert len(subject.get_valid_sessions("local", "raw")) == self.n_valid_sessions
+
+
+num_valid_sessions_test_cases = [
+    NumValidSessionsTestCase("M011.yaml", 0),
+    NumValidSessionsTestCase("M015.yaml", 19),
+    NumValidSessionsTestCase("M016.yaml", 1),
+]
+
+
+@pytest.mark.parametrize("test_case", num_valid_sessions_test_cases)
+def test_num_valid_sessions(tmp_path, test_case: NumValidSessionsTestCase):
+    _prepare_directory_structure(
+        tmp_path, NUM_VALID_SESSIONS_YAML_FOLDER, test_case.yaml_name
     )
-
     test_case.run_test(tmp_path)

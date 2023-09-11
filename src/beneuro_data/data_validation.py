@@ -92,6 +92,18 @@ class Subject:
 
         return session_folders
 
+    def get_valid_sessions(self, local_or_remote: str, processing_level: str):
+        """
+        Get all sessions that have a valid directory structure.
+        """
+        valid_sessions = []
+        for foldername in self.list_session_folders(local_or_remote, processing_level):
+            try:
+                valid_sessions.append(Session(self, foldername))
+            except:
+                pass
+
+        return valid_sessions
 
 class Session:
     date_format: str = "%Y_%m_%d_%H_%M"
