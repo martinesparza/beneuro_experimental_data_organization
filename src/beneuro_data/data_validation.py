@@ -1,6 +1,7 @@
 import os
 import re
 import warnings
+import traceback
 from datetime import datetime
 from typing import Optional
 
@@ -104,6 +105,19 @@ class Subject:
                 pass
 
         return valid_sessions
+
+    def list_session_errors(self, local_or_remote: str, processing_level: str) -> list[str]:
+        errors_per_session = []
+        for foldername in self.list_session_folders(local_or_remote, processing_level):
+            try:
+                Session(self, foldername)
+                errors_per_session.append((foldername, None))
+            except Exception as e:
+                # errors_per_session.append((foldername, str(e)))
+                errors_per_session.append((foldername, traceback.format_exc()))
+
+        return errors_per_session
+
 
 class Session:
     date_format: str = "%Y_%m_%d_%H_%M"
