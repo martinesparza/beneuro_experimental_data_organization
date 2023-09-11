@@ -449,6 +449,20 @@ class BehavioralData:
 
         return True
 
+    def _pycontrol_task_py_file_path(self):
+        return os.path.join(
+            self._get_pycontrol_py_folder_path(),
+            self._pycontrol_task_py_file_name(),
+        )
+
+    def _pycontrol_task_py_file_name(self) -> str:
+        self._validate_only_one_pycontrol_task_py_file()
+        pycontrol_py_folder_path = self._get_pycontrol_py_folder_path()
+        for fname in os.listdir(pycontrol_py_folder_path):
+            # return the first .py file we find
+            if os.path.splitext(fname)[1] == ".py":
+                return fname
+
     def _pycontrol_task_folder_exists(self) -> bool:
         return os.path.exists(self._get_pycontrol_py_folder_path())
 
