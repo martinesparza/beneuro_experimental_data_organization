@@ -49,17 +49,17 @@ def create_directory_structure_from_dict(data: dict, path: str):
 
 if __name__ == "__main__":
     test_dir_path = os.path.dirname(__file__)
-    yaml_folder = os.path.join(test_dir_path, "directory_structure_test_yamls")
-    fake_directory_structure_folder = os.path.join(
-        test_dir_path, "directory_structure_test_cases"
-    )
+    yaml_folder = os.path.join(test_dir_path, "number_of_valid_sessions_test_yamls")
+    # fake_directory_structure_folder = os.path.join(
+    #    test_dir_path, "directory_structure_test_cases"
+    # )
     data_root_path = "/data/nwb_prototype/raw/"
 
     # mouse_names = [item.name for item in os.scandir(root_path) if item.is_dir()]
     mouse_names = ["M011", "M015", "M016"]
 
     os.mkdir(yaml_folder)
-    os.mkdir(fake_directory_structure_folder)
+    # os.mkdir(fake_directory_structure_folder)
 
     for mouse_name in mouse_names:
         mouse_source_path = os.path.join(data_root_path, mouse_name)
@@ -71,7 +71,7 @@ if __name__ == "__main__":
         with open(mouse_yaml_path, "w") as f:
             YAML().dump(mouse_dir_dict, f)
 
-        create_directory_structure_from_dict(
-            mouse_dir_dict,
-            fake_directory_structure_folder,
-        )
+        # create_directory_structure_from_dict(
+        #    mouse_dir_dict,
+        #    fake_directory_structure_folder,
+        # )
