@@ -59,7 +59,6 @@ def test_sync_subject_only(tmp_path, test_case: SubjectSyncTestCase):
 
     subject = Subject(
         test_case.subject_name,
-        False,
         source_base_path,
         dest_base_path,
     )

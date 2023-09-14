@@ -6,27 +6,28 @@ from beneuro_data.validate_argument import validate_argument
 
 # TODO: how do we sync the .profile file?
 
-# Subject.get_valid_sessions("local", "raw") should get the sessions
-# that have a valid directory structure and are ready to be copied
-
 
 @validate_argument("processing_level", ["raw", "processed"])
 def sync_subject(subject: Subject, processing_level: str) -> bool:
     # 1. make sure locally the things are valid
     # 2. check if there are remote files already
     # 3. if not, create top level directory
-    assert subject.has_folder("local", processing_level), "Subject has no local folder"
+    assert subject.local_store.has_folder(processing_level), "Subject has no local folder"
+    assert not subject.remote_store.has_folder(
+        processing_level
+    ), "Subject already has remote folder"
 
-    if not subject.has_folder("remote", processing_level):
-        subject.create_folder("remote", processing_level)
+    if not subject.remote_store.has_folder(processing_level):
+        subject.remote_store.create_folder(processing_level)
 
-    assert subject.has_folder("remote", processing_level), "Could not create remote folder"
+    if not subject.remote_store.has_folder(processing_level):
+        raise FileNotFoundError(f"{subject.name} has no remote {processing_level} folder.")
 
     return True
 
 
 def upload_raw_session(session: Session, dry_run: bool):
-    assert session.has_folder("local", "raw"), "Session has no local folder"
+    assert session.has_folder("local"), "Session has no local folder"
 
     assert session.all_local_ephys_recordings_loaded(
         "raw"

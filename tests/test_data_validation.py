@@ -8,7 +8,7 @@ from typing import Type, Optional
 
 from ruamel.yaml import YAML
 
-from beneuro_data.data_validation import Subject
+from beneuro_data.data_validation import Subject, SubjectStore
 
 from generate_directory_structure_test_cases import create_directory_structure_from_dict
 
@@ -54,16 +54,19 @@ class DirectoryStructureTestCase:
 
     def run_test(self, tmp_path: pathlib.Path):
         if self.error_type is None:
-            subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
+            subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
+            subject.local_store.load_sessions("raw")
             assert subject is not None
 
         elif issubclass(self.error_type, Warning):
             with pytest.warns(self.error_type, match=self.error_message):
-                subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
+                subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
+                subject.local_store.load_sessions("raw")
 
         elif issubclass(self.error_type, BaseException):
             with pytest.raises(self.error_type, match=self.error_message):
-                subject = Subject(self.mouse_name, True, local_base_path=str(tmp_path))
+                subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
+                subject.local_store.load_sessions("raw")
 
 
 test_cases = [
@@ -147,8 +150,8 @@ class NumValidSessionsTestCase:
         return os.path.splitext(self.yaml_name)[0].split("_")[0]
 
     def run_test(self, tmp_path: pathlib.Path):
-        subject = Subject(self.mouse_name, False, local_base_path=str(tmp_path))
-        assert len(subject.get_valid_sessions("local", "raw")) == self.n_valid_sessions
+        subject = SubjectStore(self.mouse_name, str(tmp_path))
+        assert len(subject.get_valid_sessions("raw")) == self.n_valid_sessions
 
 
 num_valid_sessions_test_cases = [
