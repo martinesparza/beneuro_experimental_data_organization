@@ -208,24 +208,11 @@ class SubjectStore:
         return True
 
 
-class Session(ValidatorNode):
+class Session:
     date_format: str = "%Y_%m_%d_%H_%M"
 
-    #    def __init__(self, subject_store: SubjectStore, folder_name: str):
-    #        self.subject_store = subject_store
-    #        self.subject_name = subject_store.name
-    #
-    #        self._prescreen_folder_name(folder_name)
-    #
-    #        self.date = self.extract_date(folder_name)
-    #        self.folder_name = folder_name
-    #
-    #        self.ephys_recordings = self.load_ephys_recordings()
-    #        self.behavioral_data = self.load_behavioral_data()
-    #
-
-    def __init__(self, subject_store: SubjectStore, folder_name: str, date: datetime):
-        self.subject_store = subject_store
+    def __init__(self, subject_name: str, folder_name: str, date: datetime):
+        self.subject_name = subject_name
         self.folder_name = folder_name
         self.date = date
 
@@ -238,23 +225,12 @@ class Session(ValidatorNode):
 
         date = cls.extract_date(folder_name, subject_store.name)
 
-        session = cls(subject_store, folder_name, date)
+        session = cls(subject_store.name, folder_name, date)
 
         session.ephys_recordings = session.load_ephys_recordings()
         session.behavioral_data = session.load_behavioral_data()
 
         return session
-
-    @property
-    def subject_name(self) -> str:
-        return self.subject_store.name
-
-    def get_parent_path(self):
-        # has to be overwritten in RawSession and ProcessedSession
-        raise NotImplementedError
-
-    def get_path(self):
-        return os.path.join(self.get_parent_path(), self.folder_name)
 
     def get_expected_folder_name(self) -> str:
         return f"{self.subject_name}_{self.get_date_str()}"
@@ -343,8 +319,11 @@ class Session(ValidatorNode):
 
 
 class RawSession(Session):
+    def relative_path(self):
+        return os.path.join("raw", self.subject_name, self.get_expected_folder_name())
+
     def get_parent_path(self):
-        return self.subject_store.get_path("raw")
+        return os.path.join("raw", self.subject_name)
 
     def get_ephys_folder_path(self):
         return self.get_path()
@@ -365,7 +344,7 @@ class RawSession(Session):
         ]
 
     def load_behavioral_data(self):
-        beh_data = RawBehavioralData(self)
+        beh_data = RawBehavioralData(self.subject_name, self.folder_name)
         if beh_data.has_pycontrol_files():
             beh_data.validate()
             return beh_data
@@ -374,8 +353,11 @@ class RawSession(Session):
 
 
 class ProcessedSession(Session):
+    def relative_path(self):
+        return os.path.join("processed", self.subject_name, self.get_expected_folder_name())
+
     def get_parent_path(self):
-        return self.subject_store.get_path("processed")
+        return os.path.join("processed", self.subject_name)
 
     def get_ephys_folder_path(self):
         return os.path.join(self.get_path(), f"{self.folder_name}_ephys")
@@ -392,8 +374,15 @@ class EphysRecording(ValidatorNode):
 
 
 class RawEphysRecording(EphysRecording):
-    def __init__(self, session: RawSession, folder_name: str):
-        self.session = session
+    # def __init__(self, session: RawSession, folder_name: str):
+    def __init__(
+        self,
+        subject_name: str,
+        session_name: str,
+        folder_name: str,
+    ):
+        self.subject_name = subject_name
+        self.session_name = session_name
 
         # self.gid is g0 or g1 etc.
         self.gid = self._extract_gid(folder_name)
@@ -415,7 +404,7 @@ class RawEphysRecording(EphysRecording):
         return True
 
     def get_expected_folder_name(self) -> str:
-        return f"{self.session.get_expected_folder_name()}_{self.gid}"
+        return f"{self.session_name}_{self.gid}"
 
     def validate_probe_folder_names(self) -> bool:
         # make sure only folders corresponding to the different probes
@@ -439,16 +428,18 @@ class RawEphysRecording(EphysRecording):
         return True
 
     def get_expected_probe_folder_pattern(self) -> str:
-        return rf"{self.get_expected_folder_name()}_imec\d"
+        return rf"{self.get_expected_folder_name()}_imec\d$"
 
     def get_path(self) -> str:
-        return os.path.join(
-            self.session.get_ephys_folder_path(),
-            self.get_expected_folder_name(),
-        )
+        return self.relative_path()
 
     def get_parent_path(self) -> str:
-        return self.session.get_ephys_folder_path()
+        return os.path.join("raw", self.subject_name, self.session_name)
+
+    def relative_path(self) -> str:
+        return os.path.join(
+            "raw", self.subject_name, self.session_name, self.get_expected_folder_name()
+        )
 
 
 class BehavioralData(ValidatorNode):
@@ -470,19 +461,23 @@ class RawBehavioralData(BehavioralData):
 
     def __init__(
         self,
-        session: RawSession,
+        subject_name: str,
+        session_name: str,
     ):
-        self.session = session
+        self.subject_name = subject_name
+        self.session_name = session_name
         self.validate()
 
     def get_parent_path(self) -> str:
-        return self.session.get_path()
+        # return self.session.get_path()
+        return self.relative_path()
 
     def get_path(self) -> str:
-        return self.get_parent_path()
+        # return self.get_parent_path()
+        return self.relative_path()
 
     def relative_path(self):
-        pass
+        return os.path.join("raw", self.subject_name, self.session_name)
 
     def list_pycontrol_extensions(self) -> list[str]:
         return list(self.pycontrol_ending_pattern_per_extension.keys())
