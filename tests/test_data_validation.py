@@ -8,7 +8,7 @@ from typing import Type, Optional
 
 from ruamel.yaml import YAML
 
-from beneuro_data.data_validation import Subject, SubjectStore
+from beneuro_data.data_validation import validate_raw_session
 
 from generate_directory_structure_test_cases import create_directory_structure_from_dict
 
@@ -53,20 +53,21 @@ class DirectoryStructureTestCase:
         return os.path.splitext(self.yaml_name)[0].split("_")[0]
 
     def run_test(self, tmp_path: pathlib.Path):
+        subject_dir = tmp_path / "raw" / self.mouse_name
+
         if self.error_type is None:
-            subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
-            subject.local_store.load_sessions("raw")
-            assert subject is not None
+            for session_path in subject_dir.iterdir():
+                validate_raw_session(session_path, self.mouse_name)
 
         elif issubclass(self.error_type, Warning):
             with pytest.warns(self.error_type, match=self.error_message):
-                subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
-                subject.local_store.load_sessions("raw")
+                for session_path in subject_dir.iterdir():
+                    validate_raw_session(session_path, self.mouse_name)
 
         elif issubclass(self.error_type, BaseException):
             with pytest.raises(self.error_type, match=self.error_message):
-                subject = Subject(self.mouse_name, local_base_path=str(tmp_path))
-                subject.local_store.load_sessions("raw")
+                for session_path in subject_dir.iterdir():
+                    validate_raw_session(session_path, self.mouse_name)
 
 
 test_cases = [
@@ -103,12 +104,12 @@ test_cases = [
     DirectoryStructureTestCase(
         "M015_error_two_task_py_files.yaml",
         ValueError,
-        r"more than one",
+        r"More than one",
     ),
     DirectoryStructureTestCase(
         "M015_error_no_task_py_file.yaml",
         FileNotFoundError,
-        r"Could not find any .py files",
+        r"No .py file found",
     ),
     DirectoryStructureTestCase(
         "M011_two_recordings.yaml",
@@ -150,8 +151,18 @@ class NumValidSessionsTestCase:
         return os.path.splitext(self.yaml_name)[0].split("_")[0]
 
     def run_test(self, tmp_path: pathlib.Path):
-        subject = SubjectStore(self.mouse_name, str(tmp_path))
-        assert len(subject.get_valid_sessions("raw")) == self.n_valid_sessions
+        subject_path = tmp_path / "raw" / self.mouse_name
+
+        n_valid_sessions_found = 0
+        for session_path in subject_path.iterdir():
+            # a valid session is one that doesn't throw an error
+            try:
+                validate_raw_session(session_path, self.mouse_name)
+                n_valid_sessions_found += 1
+            except:
+                pass
+
+        assert n_valid_sessions_found == self.n_valid_sessions
 
 
 num_valid_sessions_test_cases = [

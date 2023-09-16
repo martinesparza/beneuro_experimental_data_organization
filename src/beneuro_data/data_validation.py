@@ -1,452 +1,65 @@
-import os
-import shutil
 import re
 import warnings
 from datetime import datetime
-from typing import Optional
-from abc import ABC, abstractmethod
-
-from beneuro_data.config import config
-
-HIDDEN_FILE_PATTERN = r"^\."
-# Regex pattern to match folder names ending with "_gx" where x is any integer.
-SPIKEGLX_RECORDING_PATTERN = re.compile(r"_g(\d+)$")
+from pathlib import Path
 
 
-def list_files_with_extension(folder_path: str, ext: str) -> list[str]:
-    files = []
-    for filename in os.listdir(folder_path):
-        if os.path.splitext(filename)[1] == ext:
-            files.append(filename)
-    return files
+def validate_raw_session(session_path: Path, subject_name: str):
+    validate_raw_ephys_data_of_session(session_path, subject_name)
+    validate_raw_behavioral_data_of_session(session_path, subject_name)
 
 
-def list_subfolders(path: str) -> list[str]:
-    subfolders = []
-    for filename in os.listdir(path):
-        if os.path.isdir(os.path.join(path, filename)):
-            subfolders.append(filename)
+def validate_session_path(session_path: Path, subject_name: str):
+    # 1. has to start with the subject's name
+    # 2. has to have an underscore after the subject's name
+    # 3. has to end with a date in the correct format
 
-    return subfolders
+    folder_name = session_path.name
 
+    if not session_path.exists():
+        raise FileNotFoundError(f"Session folder does not exist: {session_path}")
 
-class ValidatorNode(ABC):
-    # @abstractmethod
-    # def validate(self):
-    #    raise NotImplementedError
-
-    @abstractmethod
-    def get_path(self) -> str:
-        raise NotImplementedError
-
-    def get_parent_path(self) -> str:
-        raise NotImplementedError
-
-    def has_folder(self) -> bool:
-        return os.path.exists(self.get_path())
-
-    def has_parent_folder(self) -> bool:
-        return os.path.exists(self.get_parent_path())
-
-    def list_files_with_extension(self, ext: str) -> list[str]:
-        return list_files_with_extension(self.get_path(), ext)
-
-
-class Subject:
-    def __init__(
-        self,
-        name: str,
-        local_base_path: Optional[str] = None,
-        remote_base_path: Optional[str] = None,
-    ):
-        self.name = name
-
-        if local_base_path is None:
-            local_base_path = config.LOCAL_PATH
-        if remote_base_path is None:
-            remote_base_path = config.REMOTE_PATH
-
-        self.local_store = SubjectStore(name, local_base_path)
-        self.remote_store = SubjectStore(name, remote_base_path)
-
-    def _select_store(self, local_or_remote: str) -> "SubjectStore":
-        if local_or_remote == "local":
-            return self.local_store
-        elif local_or_remote == "remote":
-            return self.remote_store
-        else:
-            raise ValueError("local_or_remote has to be either 'local' or 'remote'")
-
-    def upload_whole_session(self, processing_level: str, folder_name: str):
-        # this fails if the local session is in an invalid format
-        local_session = self.local_store.load_session(processing_level, folder_name)
-
-        if not self.remote_store.has_folder(processing_level):
-            # raise FileNotFoundError(f"Subject {self.name} has no remote folder")
-            self.remote_store.create_folder(processing_level)
-
-        source_location = local_session.get_path()
-        target_location = source_location.replace(
-            self.local_store.base_path,
-            self.remote_store.base_path,
+    if not folder_name.startswith(subject_name):
+        raise ValueError(
+            f"Folder name has to start with subject name. Got {folder_name} with subject name {subject_name}"
         )
 
-        if os.path.exists(target_location):
-            raise FileExistsError(f"Target location already exists: {target_location}")
+    if folder_name[len(subject_name)] != "_":
+        raise ValueError(
+            f"Folder name has to have an underscore after subject name. Got {folder_name}."
+        )
 
-        shutil.copytree(source_location, target_location)
-
-    def upload_behavioral_data(self, processing_level: str, folder_name: str):
-        raise NotImplementedError
-
-        local_session = self.local_store.load_session(processing_level, folder_name)
-        remote_session = self.remote_store.load_session(processing_level, folder_name)
-
-        if not remote_session.has_folder():
-            self.remote_store.create_folder()
-
-        if remote_session.behavioral_data is not None:
-            raise FileExistsError(
-                f"Remote behavioral data already exists for {remote_session.get_path()}"
-            )
-
-        if local_session.behavioral_data is None:
-            raise FileNotFoundError(
-                "No behavioral data found in local session {local_session.get_path()}"
-            )
-
-        source_files = local_session.behavioral_data.list_children_paths()
-        target_files = [path.replace()]
-
-
-class SubjectStore:
-    def __init__(
-        self,
-        name: str,
-        base_path: str,
-    ):
-        self.name = name
-        self.base_path = base_path
-
-        if self.has_folder("raw"):
-            self.check_only_subject_subfolders("raw")
-
-        if self.has_folder("processed"):
-            self.check_only_subject_subfolders("processed")
-
-        # self.raw_sessions = self.load_sessions("raw")
-        # self.processed_sessions = self.load_sessions("processed")
-
-    def relative_path(self, processing_level: str) -> str:
-        return os.path.join(processing_level, self.name)
-
-    def absolute_path(self, processing_level: str) -> str:
-        return os.path.join(self.base_path, processing_level, self.name)
-
-    def get_parent_path(self) -> str:
-        return self.base_path
-
-    def get_path(self, processing_level: str) -> str:
-        return os.path.join(self.get_parent_path(), processing_level, self.name)
-
-    def has_folder(self, processing_level: str) -> bool:
-        return os.path.exists(self.get_path(processing_level))
-
-    def create_folder(self, relative_path: str):
-        os.mkdir(os.path.join(self.base_path, relative_path))
-
-    def list_subfolders(self, processing_level: str) -> list[str]:
-        return list_subfolders(self.get_path(processing_level))
-
-    def load_session(self, processing_level: str, folder_name: str):
-        if processing_level == "raw":
-            return self._load_raw_session(folder_name)
-        else:
-            return self._load_processed_session(folder_name)
-
-    def _load_raw_session(self, folder_name: str) -> "RawSession":
-        return RawSession.from_disk(self, folder_name)
-
-    def _load_processed_session(self, folder_name: str):
-        raise NotImplementedError
-
-    def get_valid_sessions(self, processing_level: str) -> list["Session"]:
-        valid_sessions = []
-        for foldername in self.list_subfolders("raw"):
-            try:
-                valid_sessions.append(self.load_session(processing_level, foldername))
-            except:
-                pass
-
-        return valid_sessions
-
-    def load_sessions(self, processing_level: str):
-        return [
-            self.load_session(processing_level, folder_name)
-            for folder_name in self.list_subfolders(processing_level)
-        ]
-
-    def check_only_subject_subfolders(self, processing_level: str) -> bool:
-        subject_path = self.get_path(processing_level)
-
-        for folder_name in os.listdir(subject_path):
-            # allow hidden files
-            if re.match(HIDDEN_FILE_PATTERN, folder_name):
-                continue
-
-            if not os.path.isdir(os.path.join(subject_path, folder_name)):
-                raise ValueError(
-                    f"Only subfolders are allowed in a subject's folder.\
-                    Found {folder_name} in {subject_path}"
-                )
-
-            if not folder_name.startswith(self.name):
-                raise ValueError(
-                    f"Folder name has to start with subject name. Got {folder_name} with subject name {self.name}"
-                )
-
-        return True
-
-
-class Session:
+    # this is the expected format the end of the session folder should have
+    # e.g. M016_2023_08_15_16_00
     date_format: str = "%Y_%m_%d_%H_%M"
 
-    def __init__(self, subject_name: str, folder_name: str, date: datetime):
-        self.subject_name = subject_name
-        self.folder_name = folder_name
-        self.date = date
+    # ideally the part after the subject_ is the date and time
+    extracted_date_str = folder_name[len(subject_name) + 1 :]
 
-        self.ephys_recordings: Optional[list[EphysRecording]] = None
-        self.behavioral_data: Optional[BehavioralData] = None
-
-    @classmethod
-    def from_disk(cls, subject_store: SubjectStore, folder_name: str):
-        cls.prescreen_folder_name(folder_name, subject_store.name)
-
-        date = cls.extract_date(folder_name, subject_store.name)
-
-        session = cls(subject_store.name, folder_name, date)
-
-        session.ephys_recordings = session.load_ephys_recordings()
-        session.behavioral_data = session.load_behavioral_data()
-
-        return session
-
-    def get_expected_folder_name(self) -> str:
-        return f"{self.subject_name}_{self.get_date_str()}"
-
-    def get_date_str(self) -> str:
-        return self.date.strftime(self.date_format)
-
-    @classmethod
-    def extract_date(cls, folder_name: str, subject_name: str) -> datetime:
-        date_str = cls._extract_date_str(folder_name, subject_name)
-        return datetime.strptime(date_str, cls.date_format)
-
-    @classmethod
-    def prescreen_folder_name(cls, folder_name: str, subject_name: str) -> bool:
-        if not folder_name.startswith(subject_name):
-            raise ValueError(
-                f"Folder name has to start with subject name. Got {folder_name} with subject name {subject_name}"
-            )
-
-        if folder_name[len(subject_name)] != "_":
-            raise ValueError(
-                f"Folder name has to have an underscore after subject name. Got {folder_name}."
-            )
-
-        # fails if the ending after the subject + underscore is not
-        # a date in the expected format
-        Session._validate_time_format(cls._extract_date_str(folder_name, subject_name))
-
-        return True
-
-    @staticmethod
-    def _extract_date_str(folder_name: str, subject_name: str) -> str:
-        # assumes the folder_name is correct format
-        return folder_name[len(subject_name) + 1 :]
-
-    @staticmethod
-    def _validate_time_format(time_str: str) -> bool:
-        # parsing the string to datetime, then generating the correctly formatted string to compare to
-        try:
-            correct_str = datetime.strptime(time_str, Session.date_format).strftime(
-                Session.date_format
-            )
-        except ValueError:
-            raise ValueError(
-                f"{time_str} doesn't match expected format of {Session.date_format}"
-            )
-
-        if time_str != correct_str:
-            raise ValueError(f"{time_str} doesn't match expected format of {correct_str}")
-
-        return True
-
-    def list_ephys_recording_folders(self) -> list[str]:
-        base_path = self.get_ephys_folder_path()
-
-        if not os.path.exists(base_path):
-            return []
-
-        return [
-            fname
-            for fname in os.listdir(base_path)
-            if self._ephys_recording_folder_criteria(fname)
-        ]
-
-    def _ephys_recording_folder_criteria(self, filename: str) -> bool:
-        if not os.path.isdir(os.path.join(self.get_path(), filename)):
-            return False
-
-        return SPIKEGLX_RECORDING_PATTERN.search(filename) is not None
-
-    @abstractmethod
-    def get_ephys_folder_path(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def get_behavior_folder_path(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_ephys_recordings(self):
-        raise NotImplementedError
-
-    @abstractmethod
-    def load_behavioral_data(self):
-        raise NotImplementedError
-
-
-class RawSession(Session):
-    def relative_path(self):
-        return os.path.join("raw", self.subject_name, self.get_expected_folder_name())
-
-    def get_parent_path(self):
-        return os.path.join("raw", self.subject_name)
-
-    def get_ephys_folder_path(self):
-        return self.get_path()
-
-    def get_behavior_folder_path(self):
-        return self.get_path()
-
-    def load_ephys_recordings(self):
-        ephys_recording_folders = self.list_ephys_recording_folders()
-
-        # if len(ephys_recording_folders) == 0:
-        #    warnings.warn("No raw ephys data found.")
-        if len(ephys_recording_folders) > 1:
-            warnings.warn(f"More than one raw ephys recordings found in {self.get_path()}.")
-
-        return [
-            RawEphysRecording(self, foldername) for foldername in ephys_recording_folders
-        ]
-
-    def load_behavioral_data(self):
-        beh_data = RawBehavioralData(self.subject_name, self.folder_name)
-        if beh_data.has_pycontrol_files():
-            beh_data.validate()
-            return beh_data
-        else:
-            return None
-
-
-class ProcessedSession(Session):
-    def relative_path(self):
-        return os.path.join("processed", self.subject_name, self.get_expected_folder_name())
-
-    def get_parent_path(self):
-        return os.path.join("processed", self.subject_name)
-
-    def get_ephys_folder_path(self):
-        return os.path.join(self.get_path(), f"{self.folder_name}_ephys")
-
-    def get_behavior_folder_path(self):
-        return os.path.join(self.get_path(), f"{self.folder_name}_behavior")
-
-    def load_ephys_recordings(self):
-        raise NotImplementedError
-
-
-class EphysRecording(ValidatorNode):
-    pass
-
-
-class RawEphysRecording(EphysRecording):
-    # def __init__(self, session: RawSession, folder_name: str):
-    def __init__(
-        self,
-        subject_name: str,
-        session_name: str,
-        folder_name: str,
-    ):
-        self.subject_name = subject_name
-        self.session_name = session_name
-
-        # self.gid is g0 or g1 etc.
-        self.gid = self._extract_gid(folder_name)
-        self.validate_folder_name(folder_name)
-        self.validate_probe_folder_names()
-
-    @staticmethod
-    def _extract_gid(folder_name: str) -> str:
-        return SPIKEGLX_RECORDING_PATTERN.search(folder_name).group(0)[1:]
-
-    def validate_folder_name(self, folder_name: str) -> bool:
-        expected_folder_name = self.get_expected_folder_name()
-
-        if folder_name != expected_folder_name:
-            raise ValueError(
-                f"Folder name {folder_name} does not match expected format {expected_folder_name}"
-            )
-
-        return True
-
-    def get_expected_folder_name(self) -> str:
-        return f"{self.session_name}_{self.gid}"
-
-    def validate_probe_folder_names(self) -> bool:
-        # make sure only folders corresponding to the different probes
-        recording_path = self.get_path()
-
-        for filename in os.listdir(recording_path):
-            filepath = os.path.join(recording_path, filename)
-
-            # allow hidden files
-            if re.match(HIDDEN_FILE_PATTERN, filename):
-                continue
-
-            if not os.path.isdir(filepath):
-                raise ValueError("Only folders are allowed in the ephys recordings folder")
-
-            if not re.match(self.get_expected_probe_folder_pattern(), filename):
-                raise ValueError(
-                    f"The following folder name doesn't match the expected format for probes: {filename}"
-                )
-
-        return True
-
-    def get_expected_probe_folder_pattern(self) -> str:
-        return rf"{self.get_expected_folder_name()}_imec\d$"
-
-    def get_path(self) -> str:
-        return self.relative_path()
-
-    def get_parent_path(self) -> str:
-        return os.path.join("raw", self.subject_name, self.session_name)
-
-    def relative_path(self) -> str:
-        return os.path.join(
-            "raw", self.subject_name, self.session_name, self.get_expected_folder_name()
+    # parsing the string to datetime, then generating the correctly formatted string to compare to
+    try:
+        correct_str = datetime.strptime(extracted_date_str, date_format).strftime(
+            date_format
+        )
+    except ValueError:
+        raise ValueError(
+            f"{extracted_date_str} doesn't match expected format of {date_format}"
         )
 
+    if extracted_date_str != correct_str:
+        raise ValueError(
+            f"{extracted_date_str} doesn't match expected format of {correct_str}"
+        )
 
-class BehavioralData(ValidatorNode):
-    pass
+    return True
 
 
-class RawBehavioralData(BehavioralData):
+def validate_raw_behavioral_data_of_session(session_path: Path, subject_name: str):
+    # validate that the session's path and folder name are in the expected format
+    validate_session_path(session_path, subject_name)
+
+    # look for files that match the patterns that pycontrol files should have
+    # validate their number
     pycontrol_ending_pattern_per_extension = {
         ".pca": rf"_MotSen\d-(X|Y)\.pca",
         ".txt": r"\.txt",
@@ -457,122 +70,142 @@ class RawBehavioralData(BehavioralData):
         ".txt": 1,
     }
 
-    pycontrol_py_foldername = "run_task-task_files"
+    pycontrol_start_pattern = rf"^{re.escape(session_path.name)}"
+    # pycontrol_middle_pattern = rf'{self.session.date.strftime("%Y-%m-%d")}-\d{{6}}'
+    pycontrol_middle_pattern = r".*"
 
-    def __init__(
-        self,
-        subject_name: str,
-        session_name: str,
-    ):
-        self.subject_name = subject_name
-        self.session_name = session_name
-        self.validate()
-
-    def get_parent_path(self) -> str:
-        # return self.session.get_path()
-        return self.relative_path()
-
-    def get_path(self) -> str:
-        # return self.get_parent_path()
-        return self.relative_path()
-
-    def relative_path(self):
-        return os.path.join("raw", self.subject_name, self.session_name)
-
-    def list_pycontrol_extensions(self) -> list[str]:
-        return list(self.pycontrol_ending_pattern_per_extension.keys())
-
-    def validate(self) -> bool:
-        self._validate_pycontrol_filenames()
-        self._validate_number_of_pycontrol_files()
-
-        if self._pycontrol_py_folder_exists():
-            self._validate_only_one_py_file()
-        else:
-            warnings.warn(f"No PyControl task folder found in {self.get_path()}\n")
-
-        return True
-
-    def _validate_pycontrol_filenames(self) -> bool:
-        # validate that pycontrol files are named correctly
-        for ext in self.list_pycontrol_extensions():
-            for filename in self.list_files_with_extension(ext):
-                self._validate_pycontrol_filename(ext, filename)
-
-        return True
-
-    def _validate_pycontrol_filename(self, extension: str, filename: str) -> bool:
-        pattern = self.pycontrol_filename_pattern(extension)
-
-        if re.match(pattern, filename) is None:
-            raise ValueError(
-                f"Filename {filename} does not match expected pattern for PyControl {extension} files"
-            )
-
-        return True
-
-    def has_pycontrol_files(self) -> bool:
-        return len(self._list_files_with_pycontrol_extensions()) > 0
-
-    def _list_files_with_pycontrol_extensions(self):
-        matching_filenames = []
-        for extension in self.list_pycontrol_extensions():
-            matching_filenames += self.list_files_with_extension(extension)
-
-        return matching_filenames
-
-    def pycontrol_filename_pattern(self, extension: str) -> str:
-        start_pattern = (
-            rf"^{self.session.subject_name}_{re.escape(self.session.get_date_str())}"
+    for extension in pycontrol_ending_pattern_per_extension.keys():
+        pycontrol_pattern_for_extension = (
+            pycontrol_start_pattern
+            + pycontrol_middle_pattern
+            + pycontrol_ending_pattern_per_extension[extension]
         )
 
-        # middle_pattern = rf'{self.session.date.strftime("%Y-%m-%d")}-\d{{6}}'
-        middle_pattern = r".*"
+        # this one is not that precise
+        all_files_with_extension = list(session_path.glob(rf"*{extension}"))
+        for ext_file in all_files_with_extension:
+            if re.match(pycontrol_pattern_for_extension, ext_file.name) is None:
+                raise ValueError(
+                    f"Filename does not match expected pattern for PyControl {extension} files: {ext_file}"
+                )
 
-        end_pattern = self.pycontrol_ending_pattern_per_extension[extension]
+        # at this point if there was no fail, then all files match the pycontrol pattern
+        n_files_found = len(all_files_with_extension)
+        n_files_expected = expected_number_of_pycontrol_files_per_extension[extension]
 
-        return start_pattern + middle_pattern + end_pattern
-
-    def _validate_number_of_pycontrol_files(self) -> bool:
-        for ext in self.list_pycontrol_extensions():
-            self._validate_number_of_pycontrol_files_with_extension(ext)
-
-        return True
-
-    def _validate_number_of_pycontrol_files_with_extension(self, extension: str) -> bool:
-        expected_number_of_files = self.expected_number_of_pycontrol_files_per_extension[
-            extension
-        ]
-
-        matching_filenames = self.list_files_with_extension(extension)
-
-        if len(matching_filenames) != expected_number_of_files:
+        if n_files_found != n_files_expected:
             raise ValueError(
-                f"Expected {expected_number_of_files} files with extension {extension}, but found {len(matching_filenames)}"
+                f"Expected {n_files_expected} files with extension {extension}. Found {n_files_found}"
             )
 
-        return True
+    # check if there is a folder for .py files that run the task
+    # warn if there is none
+    # if there is, make sure that only one .py file is in there
+    pycontrol_py_foldername = "run_task-task_files"
+    py_folder = session_path / pycontrol_py_foldername
 
-    def _pycontrol_py_folder_exists(self) -> bool:
-        return os.path.exists(self._expected_pyfolder_path())
+    if not py_folder.exists():
+        warnings.warn(f"No PyControl task folder found in {session_path}")
+    else:
+        n_python_files_found = len(list(py_folder.glob("*.py")))
+        if n_python_files_found > 1:
+            raise ValueError(f"More than one .py files found in task folder {session_path}")
+        if n_python_files_found == 0:
+            raise FileNotFoundError(f"No .py file found in task folder {session_path}")
 
-    def _expected_pyfolder_path(self) -> str:
-        return os.path.join(self.get_path(), self.pycontrol_py_foldername)
+    return True
 
-    def _validate_only_one_py_file(self) -> bool:
-        if not self._pycontrol_py_folder_exists():
-            raise FileNotFoundError(
-                "Trying to validate .py files but PyControl task folder doesn't exist in {self.get_path()}"
+
+def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str):
+    # validate that the session's path and folder name are in the expected format
+    validate_session_path(session_path, subject_name)
+
+    # list the folders that look like recordings -> end with _gx
+    spikeglx_recording_folder_pathlib_pattern = "*_g?"
+    recording_folder_paths = list(
+        session_path.glob(spikeglx_recording_folder_pathlib_pattern)
+    )
+
+    # ideally there is only one recording in a session.
+    # warn if there are more
+    if len(recording_folder_paths) > 1:
+        warnings.warn(f"More than one raw ephys recordings found in {session_path}.")
+
+    # validate the structure in the recording folders that we found
+    for recording_path in recording_folder_paths:
+        validate_raw_ephys_recording(recording_path)
+
+    # search subfolders for spikeglx filetypes and make sure that all of them are in the recording folders found
+    spikeglx_endings = [".lf.meta", ".lf.bin", ".ap.meta", ".ap.bin"]
+    for ending in spikeglx_endings:
+        for spikeglx_filepath in session_path.glob(f"**/*{ending}"):
+            if not any(
+                spikeglx_filepath.is_relative_to(recording_path)
+                for recording_path in recording_folder_paths
+            ):
+                raise ValueError(
+                    f"{spikeglx_filepath} is not in any known recording folders."
+                )
+
+
+def validate_raw_ephys_recording(gid_folder_path: Path):
+    # extract gx part
+    gid = extract_gid(gid_folder_path.name)
+
+    # validate that the folder name has the expected structure
+    session_name = gid_folder_path.parent.name
+    expected_folder_name = f"{session_name}_{gid}"
+    if gid_folder_path.name != expected_folder_name:
+        raise ValueError(
+            f"Folder name {gid_folder_path.name} does not match expected format {expected_folder_name}"
+        )
+
+    # validate that there are only subfolders in the recording's folder
+    # hidden files are allowed
+    probe_subfolders = []
+    for child in gid_folder_path.iterdir():
+        # hidden files are allowed
+        if child.match(".*"):
+            continue
+
+        if not child.is_dir():
+            raise ValueError("Only folders are allowed in the ephys recordings folder")
+
+        # the directories should be the probes' subfolders
+        probe_subfolders.append(child)
+
+    # validate that the probe subfolders have the expected name
+    probe_subfolder_pattern = rf"{gid_folder_path.name}_imec\d$"
+    for probe_folder in probe_subfolders:
+        if re.match(probe_subfolder_pattern, probe_folder.name) is None:
+            raise ValueError(
+                f"The following folder name doesn't match the expected format for probes: {probe_folder}"
             )
 
-        pyfolder_path = self._expected_pyfolder_path()
+    # validate that the subfolders have .lf.meta, .lf.bin, .ap.meta, .ap.bin files with the expected names
+    expected_endings = [".lf.meta", ".lf.bin", ".ap.meta", ".ap.bin"]
+    for probe_folder in probe_subfolders:
+        imec_str = probe_folder.name.split("_")[-1]
+        expected_filenames = {
+            f"{gid_folder_path.name}_t0.{imec_str}{ending}" for ending in expected_endings
+        }
+        found_filenames = {p.name for p in probe_folder.iterdir()}
+        if found_filenames != expected_filenames:
+            raise ValueError(
+                f"Files in probe directory do not match the expected pattern. {probe_folder}"
+            )
 
-        python_filenames = list_files_with_extension(pyfolder_path, ".py")
+    return True
 
-        if len(python_filenames) == 0:
-            raise FileNotFoundError(f"Could not find any .py files in {pyfolder_path}")
 
-        if len(python_filenames) > 1:
-            raise ValueError(f"Found more than one .py files in {pyfolder_path}")
+def extract_gid(folder_name: str):
+    # TODO can there be multiple numbers after the _g?
+    # SPIKEGLX_RECORDING_PATTERN = r"_g(\d+)$"
+    SPIKEGLX_RECORDING_PATTERN = r"_g(\d)$"
 
-        return True
+    gid_search_result = re.search(SPIKEGLX_RECORDING_PATTERN, folder_name)
+
+    if gid_search_result is None:
+        raise ValueError(f"Could not extract correct recording ID from {folder_name}")
+
+    return gid_search_result.group(0)[1:]
