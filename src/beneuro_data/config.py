@@ -1,13 +1,10 @@
-from pydantic.v1 import SecretStr, BaseSettings
+from pydantic.v1 import BaseSettings
+from pathlib import Path
 
 
 class Config(BaseSettings):
-    USERNAME: str
-    PASSWORD: SecretStr
-
-    REMOTE_SERVER_ADDRESS: str
-    LOCAL_PATH: str
-    REMOTE_PATH: str
+    LOCAL_PATH: Path
+    REMOTE_PATH: Path
 
     class Config:
         env_file = ".env"
