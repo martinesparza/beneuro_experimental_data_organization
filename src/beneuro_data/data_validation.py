@@ -4,9 +4,15 @@ from datetime import datetime
 from pathlib import Path
 
 
-def validate_raw_session(session_path: Path, subject_name: str):
-    validate_raw_ephys_data_of_session(session_path, subject_name)
-    validate_raw_behavioral_data_of_session(session_path, subject_name)
+def validate_raw_session(
+    session_path: Path, subject_name: str, include_behavior: bool, include_ephys: bool
+):
+    if include_behavior:
+        validate_raw_behavioral_data_of_session(session_path, subject_name)
+    if include_ephys:
+        validate_raw_ephys_data_of_session(session_path, subject_name)
+
+    return True
 
 
 def validate_session_path(session_path: Path, subject_name: str):
