@@ -169,6 +169,7 @@ num_valid_sessions_test_cases = [
     NumValidSessionsTestCase("M011.yaml", 0),
     NumValidSessionsTestCase("M015.yaml", 19),
     NumValidSessionsTestCase("M016.yaml", 1),
+    NumValidSessionsTestCase("M111.yaml", 1),
 ]
 
 
