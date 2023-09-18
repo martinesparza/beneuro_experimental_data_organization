@@ -54,9 +54,14 @@ def validate_session_path(session_path: Path, subject_name: str):
     return True
 
 
-def validate_raw_behavioral_data_of_session(session_path: Path, subject_name: str):
+def validate_raw_behavioral_data_of_session(
+    session_path: Path, subject_name: str, warn_if_no_pycontrol_py_folder: bool = True
+) -> list[Path]:
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
+
+    # start making a list of files we find
+    behavioral_data_files = []
 
     # look for files that match the patterns that pycontrol files should have
     # validate their number
@@ -98,6 +103,9 @@ def validate_raw_behavioral_data_of_session(session_path: Path, subject_name: st
                 f"Expected {n_files_expected} files with extension {extension}. Found {n_files_found}"
             )
 
+        # if there was no error, add the files to the list
+        behavioral_data_files.extend(all_files_with_extension)
+
     # check if there is a folder for .py files that run the task
     # warn if there is none
     # if there is, make sure that only one .py file is in there
@@ -105,15 +113,19 @@ def validate_raw_behavioral_data_of_session(session_path: Path, subject_name: st
     py_folder = session_path / pycontrol_py_foldername
 
     if not py_folder.exists():
-        warnings.warn(f"No PyControl task folder found in {session_path}")
+        if warn_if_no_pycontrol_py_folder:
+            warnings.warn(f"No PyControl task folder found in {session_path}")
     else:
-        n_python_files_found = len(list(py_folder.glob("*.py")))
-        if n_python_files_found > 1:
+        python_files_found = list(py_folder.glob("*.py"))
+
+        if len(python_files_found) > 1:
             raise ValueError(f"More than one .py files found in task folder {session_path}")
-        if n_python_files_found == 0:
+        if len(python_files_found) == 0:
             raise FileNotFoundError(f"No .py file found in task folder {session_path}")
 
-    return True
+        behavioral_data_files.append(python_files_found[0])
+
+    return behavioral_data_files
 
 
 def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str):
@@ -146,6 +158,8 @@ def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str):
                 raise ValueError(
                     f"{spikeglx_filepath} is not in any known recording folders."
                 )
+
+    return True
 
 
 def validate_raw_ephys_recording(gid_folder_path: Path):
