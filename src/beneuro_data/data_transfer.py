@@ -180,16 +180,17 @@ def upload_raw_ephys_data(
         )
 
     # make sure locally the things are valid
-    validate_raw_ephys_data_of_session(local_session_path, subject_name)
-
-    # list the folders we want to upload
-    spikeglx_recording_folder_pathlib_pattern = "*_g?"
-    local_recording_folder_paths = list(
-        local_session_path.glob(spikeglx_recording_folder_pathlib_pattern)
+    local_recording_folder_paths = validate_raw_ephys_data_of_session(
+        local_session_path, subject_name
     )
+    if len(local_recording_folder_paths) == 0:
+        raise FileNotFoundError(
+            f"Trying to upload raw ephys data but no recordings found in session {local_session_path}"
+        )
 
     # 2. check if there are remote files already
     remote_session_path = remote_root / local_session_path.relative_to(local_root)
+    spikeglx_recording_folder_pathlib_pattern = "*_g?"
     remote_recording_folder_paths_already_there = list(
         remote_session_path.glob(spikeglx_recording_folder_pathlib_pattern)
     )

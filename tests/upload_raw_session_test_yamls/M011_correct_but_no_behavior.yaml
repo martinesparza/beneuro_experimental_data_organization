@@ -1,0 +1,22 @@
+type: folder
+name: M011
+children:
+- type: folder
+  name: M011_2023_04_04_16_00
+  children:
+  - type: folder
+    name: M011_2023_04_04_16_00_g1
+    children:
+    - type: file
+      name: .DS_Store
+    - type: folder
+      name: M011_2023_04_04_16_00_g1_imec0
+      children:
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.meta
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.meta
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.bin
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.bin

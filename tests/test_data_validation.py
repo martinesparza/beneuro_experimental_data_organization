@@ -8,13 +8,15 @@ from typing import Type, Optional
 
 from ruamel.yaml import YAML
 
-from beneuro_data.data_validation import validate_raw_session
+from beneuro_data.data_validation import validate_raw_session, WrongNumberOfFilesError
 
 from generate_directory_structure_test_cases import create_directory_structure_from_dict
 
 
 TEST_DIR_PATH = os.path.dirname(__file__)
-YAML_FOLDER = os.path.join(TEST_DIR_PATH, "directory_structure_test_yamls")
+DIRECTORY_STRUCTURE_YAML_FOLDER = os.path.join(
+    TEST_DIR_PATH, "directory_structure_test_yamls"
+)
 NUM_VALID_SESSIONS_YAML_FOLDER = os.path.join(
     TEST_DIR_PATH, "number_of_valid_sessions_test_yamls"
 )
@@ -78,7 +80,7 @@ test_cases = [
     ),
     DirectoryStructureTestCase(
         "M015_error_number_of_pca_files.yaml",
-        ValueError,
+        WrongNumberOfFilesError,
         r"Expected 2 files with extension .pca",
     ),
     DirectoryStructureTestCase(
@@ -136,7 +138,9 @@ test_cases = [
 
 @pytest.mark.parametrize("test_case", test_cases)
 def test_validation(tmp_path, test_case: DirectoryStructureTestCase):
-    _prepare_directory_structure(tmp_path, YAML_FOLDER, test_case.yaml_name)
+    _prepare_directory_structure(
+        tmp_path, DIRECTORY_STRUCTURE_YAML_FOLDER, test_case.yaml_name
+    )
 
     test_case.run_test(tmp_path)
 

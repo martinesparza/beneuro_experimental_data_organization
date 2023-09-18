@@ -4,6 +4,10 @@ from datetime import datetime
 from pathlib import Path
 
 
+class WrongNumberOfFilesError(Exception):
+    pass
+
+
 def validate_raw_session(
     session_path: Path, subject_name: str, include_behavior: bool, include_ephys: bool
 ):
@@ -105,7 +109,7 @@ def validate_raw_behavioral_data_of_session(
         n_files_expected = expected_number_of_pycontrol_files_per_extension[extension]
 
         if n_files_found != n_files_expected:
-            raise ValueError(
+            raise WrongNumberOfFilesError(
                 f"Expected {n_files_expected} files with extension {extension}. Found {n_files_found}"
             )
 
@@ -134,7 +138,7 @@ def validate_raw_behavioral_data_of_session(
     return behavioral_data_files
 
 
-def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str):
+def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str) -> list[Path]:
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
@@ -165,7 +169,7 @@ def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str):
                     f"{spikeglx_filepath} is not in any known recording folders."
                 )
 
-    return True
+    return recording_folder_paths
 
 
 def validate_raw_ephys_recording(gid_folder_path: Path):
