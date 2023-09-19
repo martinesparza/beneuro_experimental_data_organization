@@ -17,8 +17,6 @@ children:
       name: Camera_4.avi
     - type: file
       name: Camera_5.avi
-    - type: file
-      name: metadata.csv
   - type: file
     name: M011_2023_04_04_16_00_MotSen1-X.pca
   - type: file

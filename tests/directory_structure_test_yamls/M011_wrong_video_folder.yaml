@@ -1,3 +1,4 @@
+
 type: folder
 name: M011
 children:
@@ -5,18 +6,8 @@ children:
   name: M011_2023_04_04_16_00
   children:
   - type: folder
-    name: M011_2023_04_04_16_00
+    name: Recording_wrong_video_folder
     children:
-    - type: file
-      name: Camera_1.avi
-    - type: file
-      name: Camera_2.avi
-    - type: file
-      name: Camera_3.avi
-    - type: file
-      name: Camera_4.avi
-    - type: file
-      name: Camera_5.avi
     - type: file
       name: metadata.csv
   - type: file

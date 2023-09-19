@@ -59,17 +59,17 @@ class DirectoryStructureTestCase:
 
         if self.error_type is None:
             for session_path in subject_dir.iterdir():
-                validate_raw_session(session_path, self.mouse_name, True, True)
+                validate_raw_session(session_path, self.mouse_name, True, True, True)
 
         elif issubclass(self.error_type, Warning):
             with pytest.warns(self.error_type, match=self.error_message):
                 for session_path in subject_dir.iterdir():
-                    validate_raw_session(session_path, self.mouse_name, True, True)
+                    validate_raw_session(session_path, self.mouse_name, True, True, True)
 
         elif issubclass(self.error_type, BaseException):
             with pytest.raises(self.error_type, match=self.error_message):
                 for session_path in subject_dir.iterdir():
-                    validate_raw_session(session_path, self.mouse_name, True, True)
+                    validate_raw_session(session_path, self.mouse_name, True, True, True)
 
 
 test_cases = [
@@ -133,6 +133,16 @@ test_cases = [
         None,
         "",
     ),
+    DirectoryStructureTestCase(
+        "M011_wrong_video_folder.yaml",
+        ValueError,
+        "Found .avi file in unexpected location",
+    ),
+    DirectoryStructureTestCase(
+        "M011_missing_video_metadata.yaml",
+        FileNotFoundError,
+        "Could not find metadata.csv in video folder",
+    ),
 ]
 
 
@@ -161,7 +171,7 @@ class NumValidSessionsTestCase:
         for session_path in subject_path.iterdir():
             # a valid session is one that doesn't throw an error
             try:
-                validate_raw_session(session_path, self.mouse_name, True, True)
+                validate_raw_session(session_path, self.mouse_name, True, True, True)
                 n_valid_sessions_found += 1
             except:
                 pass

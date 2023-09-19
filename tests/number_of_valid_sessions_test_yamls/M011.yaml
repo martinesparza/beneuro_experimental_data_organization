@@ -7,11 +7,6 @@ children:
   - type: file
     name: M011-2023-04-04-165016_MotSen1-Y.pca
   - type: folder
-    name: Recording_2023-04-04T165007
-    children:
-    - type: file
-      name: metadata.csv
-  - type: folder
     name: M011_2023_04_04_16_00_g1
     children:
     - type: file

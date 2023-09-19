@@ -11,11 +11,6 @@ children:
   - type: file
     name: M111_2023_04_04_16_00.txt
   - type: folder
-    name: Recording_2023-04-04T165007
-    children:
-    - type: file
-      name: metadata.csv
-  - type: folder
     name: M111_2023_04_04_16_00_g1
     children:
     - type: file

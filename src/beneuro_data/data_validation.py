@@ -2,6 +2,7 @@ import re
 import warnings
 from datetime import datetime
 from pathlib import Path
+from typing import Optional
 
 
 class WrongNumberOfFilesError(Exception):
@@ -9,12 +10,18 @@ class WrongNumberOfFilesError(Exception):
 
 
 def validate_raw_session(
-    session_path: Path, subject_name: str, include_behavior: bool, include_ephys: bool
+    session_path: Path,
+    subject_name: str,
+    include_behavior: bool,
+    include_ephys: bool,
+    include_videos: bool,
 ):
     if include_behavior:
         validate_raw_behavioral_data_of_session(session_path, subject_name)
     if include_ephys:
         validate_raw_ephys_data_of_session(session_path, subject_name)
+    if include_videos:
+        validate_raw_videos_of_session(session_path, subject_name)
 
     return True
 
@@ -233,3 +240,59 @@ def extract_gid(folder_name: str):
         raise ValueError(f"Could not extract correct recording ID from {folder_name}")
 
     return gid_search_result.group(0)[1:]
+
+
+def validate_raw_videos_of_session(
+    session_path: Path, subject_name: str, warn_if_no_video_folder: bool = True
+) -> Optional[Path]:
+    # validate that the session's path and folder name are in the expected format
+    validate_session_path(session_path, subject_name)
+
+    # video folder's name should be the same as the session's name
+    session_name = session_path.name
+
+    video_folder_path = session_path / session_name
+
+    if not video_folder_path.exists():
+        if warn_if_no_video_folder:
+            warnings.warn(f"No video folder found in {session_path}")
+
+        video_folder_exists = False
+    else:
+        video_folder_exists = True
+
+        # validate that the folder contains .avi files and a metadata.csv
+        avi_files = list(video_folder_path.glob("*.avi"))
+        for avi_file in avi_files:
+            if not avi_file.name.startswith("Camera_"):
+                raise ValueError(f"Video filename does not start with Camera_: {avi_file}")
+
+        # make sure the only remaining file is the metadata.csv
+        remaining_files_in_folder = set(video_folder_path.iterdir()).difference(avi_files)
+
+        if (video_folder_path / "metadata.csv") not in remaining_files_in_folder:
+            raise FileNotFoundError(
+                f"Could not find metadata.csv in video folder {video_folder_path}"
+            )
+
+        if len(remaining_files_in_folder) > 1:
+            raise ValueError(f"Found unexpected files in video folder {video_folder_path}")
+
+    # make sure there are no avi files in another directory
+    for avi_path in session_path.glob("**/*.avi"):
+        if not avi_path.is_relative_to(video_folder_path):
+            raise ValueError(
+                f"Found .avi file in unexpected location: {avi_path}. Expected it to be in {video_folder_path}"
+            )
+
+    # make sure there are no metadata.csv files in another directory
+    for metadata_path in session_path.glob("**/metadata.csv"):
+        if not metadata_path.is_relative_to(video_folder_path):
+            raise ValueError(
+                f"Found .avi file in unexpected location: {metadata_path}. Expected it to be in {video_folder_path}"
+            )
+
+    if video_folder_exists:
+        return video_folder_path
+
+    return None
