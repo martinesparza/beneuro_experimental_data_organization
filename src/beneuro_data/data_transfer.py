@@ -5,6 +5,7 @@ from pathlib import Path
 from beneuro_data.data_validation import (
     validate_raw_behavioral_data_of_session,
     validate_raw_ephys_data_of_session,
+    validate_raw_videos_of_session,
 )
 
 from beneuro_data.validate_argument import validate_argument
@@ -49,6 +50,7 @@ def upload_raw_session(
     remote_root: Path,
     include_behavior: bool,
     include_ephys: bool,
+    include_videos: bool,
 ):
     if include_behavior:
         upload_raw_behavioral_data(
@@ -59,6 +61,13 @@ def upload_raw_session(
         )
     if include_ephys:
         upload_raw_ephys_data(
+            local_session_path,
+            subject_name,
+            local_root,
+            remote_root,
+        )
+    if include_videos:
+        upload_raw_videos(
             local_session_path,
             subject_name,
             local_root,
@@ -222,3 +231,80 @@ def upload_raw_ephys_data(
             raise RuntimeError(
                 f"Error uploading raw ephys data from {local_session_path}.\nSee stacktrace above."
             )
+
+
+def upload_raw_videos(
+    local_session_path: Path,
+    subject_name: str,
+    local_root: Path,
+    remote_root: Path,
+):
+    processing_level = "raw"
+
+    # figure out video folder name
+    # look if there is a video folder locally
+    # check if there is a video folder remotely
+    # upload if needed
+
+    # before that make sure that we're getting something "raw"
+    # 0.1 make sure the session_path is actually a subdirectory of the local_root
+    if not local_session_path.is_relative_to(local_root):
+        raise ValueError(
+            f"Session path is not a subdirectory of the local root: {local_session_path}"
+        )
+    # 0.2 make sure the session_path has "raw" in it
+    if not ("raw" in local_session_path.parts):
+        raise ValueError(
+            f"Trying to upload a raw session, but the session's path does not contain 'raw': {local_session_path}"
+        )
+
+    # validate that there are local videos
+    local_video_folder_path = validate_raw_videos_of_session(
+        local_session_path, subject_name
+    )
+
+    if local_video_folder_path is None:
+        raise FileNotFoundError(
+            f"Trying to upload raw videos but no video folder found in session {local_session_path}"
+        )
+
+    remote_folders_created = []
+
+    # check if there are remote files already
+    remote_session_path = remote_root / local_session_path.relative_to(local_root)
+    remote_video_folder_path = remote_root / local_video_folder_path.relative_to(local_root)
+
+    remote_subject_dir = remote_root / processing_level / subject_name
+    if not remote_subject_dir.exists():
+        sync_subject_dir(subject_name, processing_level, local_root, remote_root)
+        remote_folders_created.append(remote_subject_dir)
+
+    if not remote_session_path.exists():
+        remote_session_path.mkdir()
+        remote_folders_created.append(remote_session_path)
+
+    # try copying the video folder
+    try:
+        shutil.copytree(
+            local_video_folder_path, remote_video_folder_path, copy_function=shutil.copy2
+        )
+    # clean up if it fails
+    except:
+        # remove the remote video folder
+        try:
+            shutil.rmtree(remote_video_folder_path)
+        except:
+            pass
+
+        # remove the other folders we created along the way
+        for p in remote_folders_created:
+            try:
+                shutil.rmtree(p)
+            except:
+                pass
+
+        raise RuntimeError(
+            f"Error uploading raw videos from {local_session_path}.\nSee stacktrace above."
+        )
+
+    return True

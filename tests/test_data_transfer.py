@@ -157,6 +157,7 @@ class RawSessionUploadTestCase:
     error_message: Optional[str]
     include_behavior: bool
     include_ephys: bool
+    include_videos: bool
 
     @property
     def mouse_name(self) -> str:
@@ -171,6 +172,7 @@ raw_session_upload_test_cases = [
         None,
         True,
         True,
+        True,
     ),
     RawSessionUploadTestCase(
         "M011_correct_but_no_behavior.yaml",
@@ -179,12 +181,23 @@ raw_session_upload_test_cases = [
         "Expected 2 files with extension .pca",
         True,
         True,
+        False,
     ),
     RawSessionUploadTestCase(
         "M011_correct_but_no_ephys.yaml",
         "M011_2023_04_04_16_00",
         FileNotFoundError,
         "no recordings found",
+        True,
+        True,
+        False,
+    ),
+    RawSessionUploadTestCase(
+        "M011_correct_but_no_videos.yaml",
+        "M011_2023_04_04_16_00",
+        FileNotFoundError,
+        "no video folder found",
+        True,
         True,
         True,
     ),
@@ -196,6 +209,7 @@ raw_session_upload_test_cases = [
         None,
         False,
         True,
+        False,
     ),
     # not having to upload missing ephys should not raise error
     RawSessionUploadTestCase(
@@ -205,6 +219,26 @@ raw_session_upload_test_cases = [
         None,
         True,
         False,
+        False,
+    ),
+    # not having to upload missing videos should not raise error
+    RawSessionUploadTestCase(
+        "M011_correct_but_no_videos.yaml",
+        "M011_2023_04_04_16_00",
+        None,
+        None,
+        True,
+        True,
+        False,
+    ),
+    RawSessionUploadTestCase(
+        "M011_wrong_video_folder_name.yaml",
+        "M011_2023_04_04_16_00",
+        ValueError,
+        "Found .avi file in unexpected location",
+        True,
+        True,
+        True,
     ),
 ]
 
@@ -235,6 +269,7 @@ def test_upload_raw_session(tmp_path, test_case: RawSessionUploadTestCase):
             dest_base_path,
             test_case.include_behavior,
             test_case.include_ephys,
+            test_case.include_videos,
         )
 
         import filecmp
@@ -253,4 +288,5 @@ def test_upload_raw_session(tmp_path, test_case: RawSessionUploadTestCase):
                 dest_base_path,
                 test_case.include_behavior,
                 test_case.include_ephys,
+                test_case.include_videos,
             )
