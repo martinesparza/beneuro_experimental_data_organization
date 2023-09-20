@@ -1,19 +1,19 @@
 import os
 import logging
-import pathlib
+from pathlib import Path
 from typing import Optional
 
 import spikeinterface.extractors as se
 import spikeinterface.sorters as ss
 import spikeinterface.preprocessing as sip
 
-from beneuro_data.data_validation import EphysRecording
+from beneuro_data.data_validation import validate_raw_ephys_data_of_session
 
 
 def run_kilosort_on_stream(
-    input_folder: str,
+    input_path: Path,
     stream_name: str,
-    output_folder: str,
+    output_path: Path,
     clean_up_temp_files: bool = False,
     sorter_params: Optional[dict] = None,
 ):
@@ -22,12 +22,12 @@ def run_kilosort_on_stream(
 
     Parameters
     ----------
-    input_folder: str
+    input_path: pathlib.Path
         The path to the folder containing the SpikeGLX data.
     stream_name: str
         The name of the stream to use, e.g. 'imec0.ap'.
         Each probe has its own stream.
-    output_folder: str
+    output_path: pathlib.Path
         The path to the output folder where the kilosort results will be saved.
 
     Returns
@@ -35,23 +35,26 @@ def run_kilosort_on_stream(
     sorting: SortingExtractor
     """
 
-    recording = se.read_spikeglx(input_folder, stream_name=stream_name)
+    recording = se.read_spikeglx(str(input_path), stream_name=stream_name)
 
     if sorter_params is None:
         sorter_params = {}
 
     sorting_KS3 = ss.run_kilosort3(
         recording,
-        output_folder=output_folder,
+        output_path=str(output_path),
         # docker_image = "spikeinterface/kilosort3-compiled-base:latest",
         docker_image=True,
         **sorter_params,
     )
 
     if clean_up_temp_files:
-        temp_files_to_delete = list(
-            pathlib.Path(output_folder, "sorter_output").glob("*.mat")
-        ) + list(pathlib.Path(output_folder, "sorter_output").glob("*.dat"))
+        sorter_output_folder = output_path / "sorter_output"
+
+        temp_files_to_delete = [
+            *sorter_output_folder.glob("*.mat"),
+            *sorter_output_folder.glob("*.dat"),
+        ]
 
         for f in temp_files_to_delete:
             f.unlink()
@@ -107,50 +110,63 @@ def preprocess_recording(
     return rec4
 
 
-class SpikeSorter:
-    def __init__(self, ephys_recording: EphysRecording):
-        self.ephys_recording = ephys_recording
+def get_ap_stream_names(recording_path: Path):
+    all_stream_names, _ = se.get_neo_streams("spikeglx", str(recording_path))
+    return [stream_name for stream_name in all_stream_names if stream_name.endswith("ap")]
 
-    @property
-    def ap_streams(self):
-        stream_names, _ = se.get_neo_streams(
-            "spikeglx", self.ephys_recording.get_path("local", "raw")
+
+def run_kilosort_on_probe_and_save_in_processed(
+    raw_recording_path: Path,
+    probe_name: str,
+    base_path: Path,
+    clean_up_temp_files: bool = False,
+):
+    # make the folders where the sorting output will be saved
+    raw_base_path = base_path / "raw"
+    processed_base_path = base_path / "processed"
+
+    processed_recording_path = processed_base_path / raw_recording_path.relative_to(
+        raw_base_path
+    )
+
+    # NOTE might want to make sure that the probe is in the ap streams
+
+    probe_folder_name = f"{processed_recording_path.name}_{probe_name}"
+    processed_probe_path = processed_recording_path / probe_folder_name
+
+    if not processed_probe_path.exists():
+        processed_probe_path.mkdir(parents=True)
+
+    # run sorting
+    sorting_KS3 = run_kilosort_on_stream(
+        input_path=raw_recording_path,
+        stream_name=f"{probe_name}.ap",
+        output_path=processed_probe_path,
+        clean_up_temp_files=clean_up_temp_files,
+    )
+
+
+def run_kilosort_on_recording_and_save_in_processed(
+    raw_recording_path: Path, base_path: Path, clean_up_temp_files: bool = False
+):
+    for ap_stream_name in get_ap_stream_names(raw_recording_path):
+        probe_name = ap_stream_name.split(".")[0]
+        run_kilosort_on_probe_and_save_in_processed(
+            raw_recording_path, probe_name, base_path, clean_up_temp_files
         )
-        return [stream_name for stream_name in stream_names if stream_name.endswith("ap")]
 
-    @property
-    def number_of_probes(self):
-        return len(self.ap_streams)
 
-    def run_kilosort(
-        self,
-        ap_stream_name: str,
-        clean_up_temp_files: bool = False,
-        sorter_params: Optional[dict] = None,
-    ):
-        assert ap_stream_name in self.ap_streams
-        assert self.ephys_recording.has_folder("local", "raw")
+def run_kilosort_on_session_and_save_in_processed(
+    raw_session_path: Path,
+    subject_name: str,
+    base_path: Path,
+    clean_up_temp_files: bool = False,
+):
+    ephys_recording_folders = validate_raw_ephys_data_of_session(
+        raw_session_path, subject_name
+    )
 
-        if not self.ephys_recording.has_folder("local", "processed"):
-            self.ephys_recording.make_folder("local", "processed")
-        assert self.ephys_recording.has_folder("local", "processed")
-
-        # each probe should have its own output folder
-        output_folder_name = (
-            f"{self.ephys_recording.folder_name}_{ap_stream_name.split('.')[0]}"
+    for recording_path in ephys_recording_folders:
+        run_kilosort_on_recording_and_save_in_processed(
+            recording_path, base_path, clean_up_temp_files
         )
-        output_path = os.path.join(
-            self.ephys_recording.get_path("local", "processed"), output_folder_name
-        )
-        if not os.path.exists(output_path):
-            os.mkdir(output_path)
-
-        sorting_KS3 = run_kilosort_on_stream(
-            input_folder=self.ephys_recording.get_path("local", "raw"),
-            stream_name=ap_stream_name,
-            output_folder=output_path,
-            clean_up_temp_files=clean_up_temp_files,
-            sorter_params=sorter_params,
-        )
-
-        return sorting_KS3
