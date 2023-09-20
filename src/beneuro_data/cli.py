@@ -8,14 +8,30 @@ app = typer.Typer()
 
 
 @app.command()
-def validate_structure(subject_name: str, processing_level: str, include_behavior: bool, include_ephys: bool):
+def validate_structure(
+    subject_name: str,
+    processing_level: str,
+    include_behavior: bool = True,
+    include_ephys: bool = True,
+    include_videos: bool = True,
+):
     subject_path = config.LOCAL_PATH / processing_level / subject_name
 
     for session_path in subject_path.iterdir():
         if session_path.is_dir():
-            typer.echo(f"Checking {session_path}")
-            validate_raw_session(session_path, subject_name, include_behavior, include_ephys)
-            typer.echo(f"{session_path.name} looking good.")
+            # typer.echo(f"Checking {session_path}")
+            try:
+                validate_raw_session(
+                    session_path,
+                    subject_name,
+                    include_behavior,
+                    include_ephys,
+                    include_videos,
+                )
+            except Exception as e:
+                typer.echo(f"Problem with {session_path.name}: {e.args[0]}\n")
+            else:
+                typer.echo(f"{session_path.name} looking good.\n")
 
 
 @app.command()
