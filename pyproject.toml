@@ -17,6 +17,12 @@ pytest = "^7.4.0"
 "ruamel.yaml" = "^0.17.32"
 black = "^23.7.0"
 
+[tool.poetry.group.processing]
+optional = true
+
+[tool.poetry.group.processing.dependencies]
+spikeinterface = "^0.98.2"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
