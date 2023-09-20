@@ -6,6 +6,7 @@ from beneuro_data.data_validation import (
     validate_raw_behavioral_data_of_session,
     validate_raw_ephys_data_of_session,
     validate_raw_videos_of_session,
+    validate_raw_session,
 )
 
 from beneuro_data.validate_argument import validate_argument
@@ -308,3 +309,36 @@ def upload_raw_videos(
         )
 
     return True
+
+
+def download_raw_session(
+    remote_session_path: Path,
+    subject_name: str,
+    local_base_path: Path,
+    remote_base_path: Path,
+):
+    # check what data the session has on the server
+    behavior_files, ephys_folder_paths, video_folder_path = validate_raw_session(
+        remote_session_path, subject_name, True, True, True
+    )
+
+    include_behavior = len(behavior_files) > 0
+    include_ephys = len(ephys_folder_paths) > 0
+    include_videos = video_folder_path is not None
+
+    # downloading is just uploading the other way around
+    upload_raw_session(
+        remote_session_path,
+        subject_name,
+        # config.REMOTE_PATH,
+        # config.LOCAL_PATH,
+        remote_base_path,
+        local_base_path,
+        include_behavior,
+        include_ephys,
+        include_videos,
+    )
+
+    local_session_path = local_base_path / remote_session_path.relative_to(remote_base_path)
+
+    return local_session_path
