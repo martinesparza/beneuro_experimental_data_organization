@@ -16,14 +16,18 @@ def validate_raw_session(
     include_ephys: bool,
     include_videos: bool,
 ):
-    if include_behavior:
-        validate_raw_behavioral_data_of_session(session_path, subject_name)
-    if include_ephys:
-        validate_raw_ephys_data_of_session(session_path, subject_name)
-    if include_videos:
-        validate_raw_videos_of_session(session_path, subject_name)
+    behavior_files = []
+    ephys_folder_paths = []
+    video_folder_path = None
 
-    return True
+    if include_behavior:
+        behavior_files = validate_raw_behavioral_data_of_session(session_path, subject_name)
+    if include_ephys:
+        ephys_folder_paths = validate_raw_ephys_data_of_session(session_path, subject_name)
+    if include_videos:
+        video_folder_path = validate_raw_videos_of_session(session_path, subject_name)
+
+    return behavior_files, ephys_folder_paths, video_folder_path
 
 
 def validate_session_path(session_path: Path, subject_name: str):
