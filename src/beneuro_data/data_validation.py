@@ -106,6 +106,15 @@ def validate_raw_behavioral_data_of_session(
         # this one is not that precise
         all_files_with_extension = list(session_path.glob(rf"*{extension}"))
         for ext_file in all_files_with_extension:
+            # sometimes the experimenter leaves comments in a comment.txt file
+            if ext_file.name == "comment.txt":
+                # include this file in the list of behavioral data files found
+                behavioral_data_files.append(ext_file)
+                # remove it from the list that will be compared to the expected number of pycontrol files
+                all_files_with_extension.remove(ext_file)
+                # skip testing if it matches the pycontrol pattern
+                continue
+
             if re.match(pycontrol_pattern_for_extension, ext_file.name) is None:
                 raise ValueError(
                     f"Filename does not match expected pattern for PyControl {extension} files: {ext_file}"

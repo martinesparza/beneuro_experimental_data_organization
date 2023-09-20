@@ -143,6 +143,11 @@ test_cases = [
         FileNotFoundError,
         "Could not find metadata.csv in video folder",
     ),
+    DirectoryStructureTestCase(
+        "M011_extra_comment_txt.yaml",
+        None,
+        "",
+    ),
 ]
 
 
