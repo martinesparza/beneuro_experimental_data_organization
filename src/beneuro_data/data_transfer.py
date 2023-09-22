@@ -316,15 +316,18 @@ def download_raw_session(
     subject_name: str,
     local_base_path: Path,
     remote_base_path: Path,
+    include_behavior: bool,
+    include_ephys: bool,
+    include_videos: bool,
 ):
     # check what data the session has on the server
     behavior_files, ephys_folder_paths, video_folder_path = validate_raw_session(
         remote_session_path, subject_name, True, True, True
     )
 
-    include_behavior = len(behavior_files) > 0
-    include_ephys = len(ephys_folder_paths) > 0
-    include_videos = video_folder_path is not None
+    include_behavior = include_behavior and len(behavior_files) > 0
+    include_ephys = include_ephys and len(ephys_folder_paths) > 0
+    include_videos = include_videos and video_folder_path is not None
 
     # downloading is just uploading the other way around
     upload_raw_session(
