@@ -40,9 +40,11 @@ def run_kilosort_on_stream(
     if sorter_params is None:
         sorter_params = {}
 
-    sorting_KS3 = ss.run_kilosort3(
+    # sorting_KS3 = ss.run_kilosort3(
+    sorting_KS3 = ss.run_sorter(
+        "kilosort3",
         recording,
-        output_path=str(output_path),
+        output_folder=str(output_path),
         # docker_image = "spikeinterface/kilosort3-compiled-base:latest",
         docker_image=True,
         **sorter_params,
@@ -115,44 +117,47 @@ def get_ap_stream_names(recording_path: Path):
     return [stream_name for stream_name in all_stream_names if stream_name.endswith("ap")]
 
 
-def run_kilosort_on_probe_and_save_in_processed(
+def run_kilosort_on_recording_and_save_in_processed(
     raw_recording_path: Path,
-    probe_name: str,
     base_path: Path,
+    stream_names_to_process: Optional[list] = None,
     clean_up_temp_files: bool = False,
 ):
-    # make the folders where the sorting output will be saved
+    # determine output path
     raw_base_path = base_path / "raw"
     processed_base_path = base_path / "processed"
 
-    processed_recording_path = processed_base_path / raw_recording_path.relative_to(
+    raw_session_path = raw_recording_path.parent
+    recording_folder_name = raw_recording_path.name
+    session_folder_name = raw_session_path.name
+
+    processed_session_path = processed_base_path / raw_session_path.relative_to(
         raw_base_path
     )
-
-    # NOTE might want to make sure that the probe is in the ap streams
-
-    probe_folder_name = f"{processed_recording_path.name}_{probe_name}"
-    processed_probe_path = processed_recording_path / probe_folder_name
-
-    if not processed_probe_path.exists():
-        processed_probe_path.mkdir(parents=True)
-
-    # run sorting
-    sorting_KS3 = run_kilosort_on_stream(
-        input_path=raw_recording_path,
-        stream_name=f"{probe_name}.ap",
-        output_path=processed_probe_path,
-        clean_up_temp_files=clean_up_temp_files,
+    processed_recording_ephys_path = (
+        processed_session_path / f"{session_folder_name}_epyhs" / recording_folder_name
     )
 
+    if stream_names_to_process is None:
+        stream_names_to_process = get_ap_stream_names(raw_recording_path)
 
-def run_kilosort_on_recording_and_save_in_processed(
-    raw_recording_path: Path, base_path: Path, clean_up_temp_files: bool = False
-):
-    for ap_stream_name in get_ap_stream_names(raw_recording_path):
+    for stream_name in stream_names_to_process:
+        if stream_name not in get_ap_stream_names(raw_recording_path):
+            raise ValueError(
+                f"Probe {stream_name} is not in recording's AP streams. Found {get_ap_stream_names(raw_recording_path)}"
+            )
+
+    for ap_stream_name in stream_names_to_process:
         probe_name = ap_stream_name.split(".")[0]
-        run_kilosort_on_probe_and_save_in_processed(
-            raw_recording_path, probe_name, base_path, clean_up_temp_files
+
+        probe_folder_name = f"{processed_recording_ephys_path.name}_{probe_name}"
+        processed_probe_path = processed_recording_ephys_path / probe_folder_name
+
+        sorting_KS3 = run_kilosort_on_stream(
+            input_path=raw_recording_path,
+            stream_name=f"{probe_name}.ap",
+            output_path=processed_probe_path,
+            clean_up_temp_files=clean_up_temp_files,
         )
 
 
