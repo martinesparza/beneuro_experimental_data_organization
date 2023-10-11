@@ -1,4 +1,5 @@
 import typer
+from rich import print
 
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
@@ -29,9 +30,10 @@ def validate_structure(
                     include_videos,
                 )
             except Exception as e:
-                typer.echo(f"Problem with {session_path.name}: {e.args[0]}\n")
+                # typer.echo(f"Problem with {session_path.name}: {e.args[0]}\n")
+                print(f"[bold red]Problem with {session_path.name}: {e.args[0]}\n")
             else:
-                typer.echo(f"{session_path.name} looking good.\n")
+                print(f"[bold green]{session_path.name} looking good.\n")
 
 
 @app.command()
