@@ -1,5 +1,6 @@
 from pydantic.v1 import BaseSettings
 from pathlib import Path
+from dotenv import find_dotenv
 
 
 class Config(BaseSettings):
@@ -7,7 +8,7 @@ class Config(BaseSettings):
     REMOTE_PATH: Path
 
     class Config:
-        env_file = ".env"
+        env_file = find_dotenv(".env")
 
 
 config = Config()
