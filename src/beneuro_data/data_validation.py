@@ -261,21 +261,27 @@ def validate_raw_videos_of_session(
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
+    video_extension = ".avi"
+
     # video folder's name should be the same as the session's name
     session_name = session_path.name
+    video_folder_name = session_name
+    # video_folder_name = session_name + "_cameras"
+    video_folder_path = session_path / video_folder_name
 
-    video_folder_path = session_path / session_name
+    #
+    expected_video_filename_pattern = rf"{session_name}_camera_\d{video_extension}"
 
     if not video_folder_path.exists():
         if warn_if_no_video_folder:
-            warnings.warn(f"No video folder found in {session_path}")
+            warnings.warn(f"No correctly named video folder found in {session_path}")
 
         video_folder_exists = False
     else:
         video_folder_exists = True
 
         # validate that the folder contains .avi files and a metadata.csv
-        avi_files = list(video_folder_path.glob("*.avi"))
+        avi_files = list(video_folder_path.glob(f"*{video_extension}"))
         for avi_file in avi_files:
             if not avi_file.name.startswith("Camera_"):
                 raise ValueError(f"Video filename does not start with Camera_: {avi_file}")
@@ -292,17 +298,17 @@ def validate_raw_videos_of_session(
             raise ValueError(f"Found unexpected files in video folder {video_folder_path}")
 
     # make sure there are no avi files in another directory
-    for avi_path in session_path.glob("**/*.avi"):
+    for avi_path in session_path.glob(f"**/*{video_extension}"):
         if not avi_path.is_relative_to(video_folder_path):
             raise ValueError(
-                f"Found .avi file in unexpected location: {avi_path}. Expected it to be in {video_folder_path}"
+                f"Found {video_extension} file in unexpected location: {avi_path}. Expected it to be in {video_folder_path}"
             )
 
     # make sure there are no metadata.csv files in another directory
     for metadata_path in session_path.glob("**/metadata.csv"):
         if not metadata_path.is_relative_to(video_folder_path):
             raise ValueError(
-                f"Found .avi file in unexpected location: {metadata_path}. Expected it to be in {video_folder_path}"
+                f"Found metadata.csv file in unexpected location: {metadata_path}. Expected it to be in {video_folder_path}"
             )
 
     if video_folder_exists:

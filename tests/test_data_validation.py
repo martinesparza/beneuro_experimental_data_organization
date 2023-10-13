@@ -136,7 +136,7 @@ test_cases = [
     DirectoryStructureTestCase(
         "M011_wrong_video_folder.yaml",
         ValueError,
-        "Found .avi file in unexpected location",
+        "file in unexpected location",
     ),
     DirectoryStructureTestCase(
         "M011_missing_video_metadata.yaml",
