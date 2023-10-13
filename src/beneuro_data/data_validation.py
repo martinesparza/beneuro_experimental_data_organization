@@ -256,7 +256,9 @@ def extract_gid(folder_name: str):
 
 
 def validate_raw_videos_of_session(
-    session_path: Path, subject_name: str, warn_if_no_video_folder: bool = True
+    session_path: Path,
+    subject_name: str,
+    warn_if_no_video_folder: bool = True,
 ) -> Optional[Path]:
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)

@@ -8,6 +8,16 @@ children:
     name: Recording_wrong_video_folder
     children:
     - type: file
+      name: M011_2023_04_04_16_00_camera_1.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_2.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_3.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_4.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_5.avi
+    - type: file
       name: metadata.csv
   - type: file
     name: M011_2023_04_04_16_00_MotSen1-X.pca
