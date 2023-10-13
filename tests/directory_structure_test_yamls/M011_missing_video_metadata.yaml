@@ -5,18 +5,18 @@ children:
   name: M011_2023_04_04_16_00
   children:
   - type: folder
-    name: M011_2023_04_04_16_00
+    name: M011_2023_04_04_16_00_cameras
     children:
     - type: file
-      name: Camera_1.avi
+      name: M011_2023_04_04_16_00_camera_1.avi
     - type: file
-      name: Camera_2.avi
+      name: M011_2023_04_04_16_00_camera_2.avi
     - type: file
-      name: Camera_3.avi
+      name: M011_2023_04_04_16_00_camera_3.avi
     - type: file
-      name: Camera_4.avi
+      name: M011_2023_04_04_16_00_camera_4.avi
     - type: file
-      name: Camera_5.avi
+      name: M011_2023_04_04_16_00_camera_5.avi
   - type: file
     name: M011_2023_04_04_16_00_MotSen1-X.pca
   - type: file

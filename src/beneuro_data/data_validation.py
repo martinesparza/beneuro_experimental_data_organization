@@ -265,12 +265,10 @@ def validate_raw_videos_of_session(
 
     # video folder's name should be the same as the session's name
     session_name = session_path.name
-    video_folder_name = session_name
-    # video_folder_name = session_name + "_cameras"
+    video_folder_name = session_name + "_cameras"
     video_folder_path = session_path / video_folder_name
 
-    #
-    expected_video_filename_pattern = rf"{session_name}_camera_\d{video_extension}"
+    expected_video_filename_start = rf"{session_name}_camera_"
 
     if not video_folder_path.exists():
         if warn_if_no_video_folder:
@@ -281,10 +279,16 @@ def validate_raw_videos_of_session(
         video_folder_exists = True
 
         # validate that the folder contains .avi files and a metadata.csv
-        avi_files = list(video_folder_path.glob(f"*{video_extension}"))
+        avi_files = list(video_folder_path.glob(rf"*{video_extension}"))
+
+        if len(avi_files) == 0:
+            raise ValueError(f"No video files found in video folder: {video_folder_path}")
+
         for avi_file in avi_files:
-            if not avi_file.name.startswith("Camera_"):
-                raise ValueError(f"Video filename does not start with Camera_: {avi_file}")
+            if not avi_file.name.startswith(expected_video_filename_start):
+                raise ValueError(
+                    f"Video filename does not start with {expected_video_filename_start}: {avi_file}"
+                )
 
         # make sure the only remaining file is the metadata.csv
         remaining_files_in_folder = set(video_folder_path.iterdir()).difference(avi_files)
@@ -298,7 +302,7 @@ def validate_raw_videos_of_session(
             raise ValueError(f"Found unexpected files in video folder {video_folder_path}")
 
     # make sure there are no avi files in another directory
-    for avi_path in session_path.glob(f"**/*{video_extension}"):
+    for avi_path in session_path.glob(rf"**/*{video_extension}"):
         if not avi_path.is_relative_to(video_folder_path):
             raise ValueError(
                 f"Found {video_extension} file in unexpected location: {avi_path}. Expected it to be in {video_folder_path}"

@@ -139,6 +139,21 @@ test_cases = [
         "file in unexpected location",
     ),
     DirectoryStructureTestCase(
+        "M011_wrong_video_filenames.yaml",
+        ValueError,
+        "Video filename",
+    ),
+    DirectoryStructureTestCase(
+        "M011_no_video_files_in_folder.yaml",
+        ValueError,
+        "No video files found",
+    ),
+    DirectoryStructureTestCase(
+        "M011_old_video_naming.yaml",
+        ValueError,
+        "file in unexpected location",
+    ),
+    DirectoryStructureTestCase(
         "M011_missing_video_metadata.yaml",
         FileNotFoundError,
         "Could not find metadata.csv in video folder",
