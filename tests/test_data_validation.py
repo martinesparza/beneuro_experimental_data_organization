@@ -145,7 +145,7 @@ test_cases = [
     ),
     DirectoryStructureTestCase(
         "M011_no_video_files_in_folder.yaml",
-        ValueError,
+        FileNotFoundError,
         "No video files found",
     ),
     DirectoryStructureTestCase(

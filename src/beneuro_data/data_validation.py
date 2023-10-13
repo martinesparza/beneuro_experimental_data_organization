@@ -282,7 +282,9 @@ def validate_raw_videos_of_session(
         avi_files = list(video_folder_path.glob(rf"*{video_extension}"))
 
         if len(avi_files) == 0:
-            raise ValueError(f"No video files found in video folder: {video_folder_path}")
+            raise FileNotFoundError(
+                f"No video files found in video folder: {video_folder_path}"
+            )
 
         for avi_file in avi_files:
             if not avi_file.name.startswith(expected_video_filename_start):
