@@ -112,6 +112,60 @@ def rename_videos(
 
 
 @app.command()
+def upload_session(
+    local_session_path: Annotated[
+        Path, typer.Argument(help="Path to session directory. Can be relative or absolute")
+    ],
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
+    ],
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior", help="Upload behavioral data or not."
+        ),
+    ] = True,
+    include_ephys: Annotated[
+        bool,
+        typer.Option("--include-ephys/--ignore-ephys", help="Upload ephys data or not."),
+    ] = True,
+    include_videos: Annotated[
+        bool,
+        typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
+    ] = True,
+):
+    """
+    Upload (raw) experimental data in a given session to the remote server.
+
+    Example usage:
+        `bnd upload-session . M017`
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be checked.")
+
+    upload_raw_session(
+        local_session_path.absolute(),
+        subject_name,
+        config.LOCAL_PATH,
+        config.REMOTE_PATH,
+        include_behavior,
+        include_ephys,
+        include_videos,
+    )
+
+    return True
+
+
+@app.command()
 def validate_sessions(
     subject_name: Annotated[str, typer.Argument(help="Subject name.")],
     processing_level: Annotated[
