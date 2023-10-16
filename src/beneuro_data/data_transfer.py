@@ -53,6 +53,15 @@ def upload_raw_session(
     include_ephys: bool,
     include_videos: bool,
 ):
+    # check everything we want to upload
+    validate_raw_session(
+        local_session_path,
+        subject_name,
+        include_behavior,
+        include_ephys,
+        include_videos,
+    )
+
     if include_behavior:
         upload_raw_behavioral_data(
             local_session_path,
