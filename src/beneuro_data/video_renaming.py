@@ -5,12 +5,14 @@ from beneuro_data.data_validation import (
     validate_session_path,
 )
 
+from rich import print as rprint
+
 
 def rename_raw_videos_of_session(
     session_path: Path,
     subject_name: str,
-    dry_run: bool = False,
-):
+    verbose: bool = False,
+) -> list[tuple[Path, Path]]:
     """
     Rename the raw videos saved by Jarvis to the expected format.
 
@@ -20,8 +22,12 @@ def rename_raw_videos_of_session(
         Path to the session folder.
     subject_name : str
         Name of the subject, e.g. M017
-    dry_run : bool, optional
-        If True, don't actually rename anything, just print what would be done.
+    verbose: bool, default False
+        List the files that were renamed.
+
+    Returns
+    -------
+    list of pairs of old_path, new_path
     """
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
@@ -35,17 +41,20 @@ def rename_raw_videos_of_session(
 
     expected_video_filename_start = f"{session_name}_camera_"
 
+    old_and_new_paths = []
+
     try:
         validate_raw_videos_of_session(session_path, subject_name, False)
     except ValueError as e:
         if "file in unexpected location" in str(e):
-            # wrong folder, don't know about the filenames yet
+            # there are videos in the wrong folder, don't know about the filenames yet
 
             found_video_folders = set(
                 video_file_path.parent
                 for video_file_path in session_path.glob(f"**/*{video_extension}")
             )
 
+            # make sure all the videos are in one folder
             assert len(found_video_folders) == 1
             found_video_folder = found_video_folders.pop()
 
@@ -53,14 +62,16 @@ def rename_raw_videos_of_session(
                 raise FileExistsError(
                     f"Aborting renaming. {found_video_folder} and {expected_video_folder_path} both exist"
                 )
-            if dry_run:
-                print(found_video_folder, "->", expected_video_folder_path)
-            else:
-                found_video_folder.rename(expected_video_folder_path)
+
+            found_video_folder.rename(expected_video_folder_path)
+            old_and_new_paths.append((found_video_folder, expected_video_folder_path))
 
             # at this point the folder should be as expected,
             # but filenames could be wrong, so try again
-            rename_raw_videos_of_session(session_path, subject_name)
+            # and potentially add the files to the list
+            old_and_new_paths.extend(
+                rename_raw_videos_of_session(session_path, subject_name, False)
+            )
 
         if "Video filename does not start with" in str(e):
             # wrong filenames, correct folder
@@ -80,13 +91,21 @@ def rename_raw_videos_of_session(
                 if new_path.exists():
                     raise FileExistsError(f"Aborting renaming. {new_path} already exists")
 
-                if dry_run:
-                    print(old_path, "->", new_path)
-                else:
-                    old_path.rename(new_path)
+                old_path.rename(new_path)
+                old_and_new_paths.append((old_path, new_path))
 
     except Exception as e:
         raise e
-    else:
-        if dry_run:
-            print(f"{session_path} looks good, no renaming needed.")
+
+    if verbose:
+        if len(old_and_new_paths) == 0:
+            rprint(f"{session_path} looks good, no renaming needed.")
+        else:
+            for old_path, new_path in old_and_new_paths:
+                rprint(
+                    str(old_path.relative_to(session_path)),
+                    "->",
+                    str(new_path.relative_to(session_path)),
+                )
+
+    return old_and_new_paths
