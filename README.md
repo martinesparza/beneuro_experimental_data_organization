@@ -38,19 +38,19 @@ Features on the way:
 ## Configuring the local and remote data storage
 The tool needs to know where the experimental data is stored locally and remotely.
 
-(This part might be replaced by a `bnd init` in the near future.)
-
 0. Mount the RDS server. (If you're able to access the data on it from the file browser, it's probably already mounted.)
 
-1. Create a file called `.env` in the `beneuro_experimental_data_organization` folder and add the following content:
-```
-LOCAL_PATH = /path/to/the/root/of/the/experimental/data/storage/on/the/local/computer
-REMOTE_PATH = /path/to/the/root/of/the/experimental/data/storage/where/you/mounted/RDS/to
-```
+1. Run `bnd init` and enter the root folders where the experimental data are stored on the local computer and the server. These refer to the folders where you have `raw` and `processed` folders.
 
-These refer to the folders where you have `raw` and `processed` folders.
+   This will create a file called `.env` in the `beneuro_experimental_data_organization` folder and add the following content:
+   ```
+   LOCAL_PATH = /path/to/the/root/of/the/experimental/data/storage/on/the/local/computer
+   REMOTE_PATH = /path/to/the/root/of/the/experimental/data/storage/where/you/mounted/RDS/to
+   ```
 
-2. Run `bnd show-config` to check if the tool sees settings you just entered.
+   Alternatively, you can create this file by hand.
+
+2. Run `bnd check-config` to verify that the folders in the config have the expected `raw` and `processed` folders within them.
 
 
 # Usage
