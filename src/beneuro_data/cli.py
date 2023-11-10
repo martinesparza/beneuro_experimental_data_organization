@@ -4,6 +4,7 @@ from typing_extensions import Annotated
 import typer
 from rich import print
 
+from beneuro_data.subject_sessions import get_last_session_path
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
 from beneuro_data.video_renaming import rename_raw_videos_of_session
@@ -157,6 +158,68 @@ def upload_session(
 
     upload_raw_session(
         local_session_path.absolute(),
+        subject_name,
+        config.LOCAL_PATH,
+        config.REMOTE_PATH,
+        include_behavior,
+        include_ephys,
+        include_videos,
+    )
+
+    return True
+
+
+@app.command()
+def upload_last_session(
+    subject_name: Annotated[
+        str,
+        typer.Argument(help="Name of the subject the session belongs to."),
+    ],
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior", help="Upload behavioral data or not."
+        ),
+    ] = True,
+    include_ephys: Annotated[
+        bool,
+        typer.Option("--include-ephys/--ignore-ephys", help="Upload ephys data or not."),
+    ] = True,
+    include_videos: Annotated[
+        bool,
+        typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
+    ] = True,
+):
+    """
+    Upload (raw) experimental data in the last session of a subject to the remote server.
+
+    Example usage:
+        `bnd upload-last-session M017`
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be checked.")
+
+    config = _load_config()
+
+    subject_path = config.LOCAL_PATH / processing_level / subject_name
+
+    # get the last valid session
+    last_session_path = get_last_session_path(subject_path, subject_name).absolute()
+
+    # ask the user if this is really the session they want to upload
+    typer.confirm(
+        f"{last_session_path.name} is the last session for {subject_name}. Upload?",
+        abort=True,
+    )
+
+    upload_raw_session(
+        last_session_path,
         subject_name,
         config.LOCAL_PATH,
         config.REMOTE_PATH,

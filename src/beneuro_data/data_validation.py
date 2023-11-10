@@ -4,6 +4,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# this is the expected format the end of the session folder should have
+# e.g. M016_2023_08_15_16_00
+EXPECTED_DATE_FORMAT: str = "%Y_%m_%d_%H_%M"
+
 
 class WrongNumberOfFilesError(Exception):
     pass
@@ -30,6 +34,25 @@ def validate_raw_session(
     return behavior_files, ephys_folder_paths, video_folder_path
 
 
+def validate_date_format(extracted_date_str: str) -> bool:
+    # parsing the string to datetime, then generating the correctly formatted string to compare to
+    try:
+        correct_str = datetime.strptime(extracted_date_str, EXPECTED_DATE_FORMAT).strftime(
+            EXPECTED_DATE_FORMAT
+        )
+    except ValueError:
+        raise ValueError(
+            f"{extracted_date_str} doesn't match expected format of {EXPECTED_DATE_FORMAT}"
+        )
+
+    if extracted_date_str != correct_str:
+        raise ValueError(
+            f"{extracted_date_str} doesn't match expected format of {correct_str}"
+        )
+
+    return True
+
+
 def validate_session_path(session_path: Path, subject_name: str):
     # 1. has to start with the subject's name
     # 2. has to have an underscore after the subject's name
@@ -50,27 +73,10 @@ def validate_session_path(session_path: Path, subject_name: str):
             f"Folder name has to have an underscore after subject name. Got {folder_name}."
         )
 
-    # this is the expected format the end of the session folder should have
-    # e.g. M016_2023_08_15_16_00
-    date_format: str = "%Y_%m_%d_%H_%M"
-
     # ideally the part after the subject_ is the date and time
     extracted_date_str = folder_name[len(subject_name) + 1 :]
 
-    # parsing the string to datetime, then generating the correctly formatted string to compare to
-    try:
-        correct_str = datetime.strptime(extracted_date_str, date_format).strftime(
-            date_format
-        )
-    except ValueError:
-        raise ValueError(
-            f"{extracted_date_str} doesn't match expected format of {date_format}"
-        )
-
-    if extracted_date_str != correct_str:
-        raise ValueError(
-            f"{extracted_date_str} doesn't match expected format of {correct_str}"
-        )
+    validate_date_format(extracted_date_str)
 
     return True
 
