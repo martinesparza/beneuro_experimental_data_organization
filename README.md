@@ -61,6 +61,7 @@ The tool needs to know where the experimental data is stored locally and remotel
 - You can validate the structure of raw data for an individual session:
   - `bnd validate-session . <subject-name>` if you're in the session's directory
   - `bnd validate-session /absolute/path/to/session/folder <subject-name>` from anywhere
+  - `bnd validate-last-session <subject-name>` from anywhere to validate the last recorded session
  
   This will give you an error if there is a problem with the file structure.
 
@@ -88,6 +89,10 @@ Add `--verbose` to the end to see what files were renamed.
 Once you're done recording a session, you can upload that session to the server with:
   
   `bnd upload-session . <subject-name>`
+
+or if you don't want to `cd` into the session's directory:
+
+  `bnd upload-last-session <subject-name>`
 
 This should first validate the data, then copy it to the server, and complain if it's already there.
 
