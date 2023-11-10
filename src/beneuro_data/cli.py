@@ -71,6 +71,62 @@ def validate_session(
 
 
 @app.command()
+def validate_last_session(
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
+    ],
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+    check_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--check-behavior/--ignore-behavior", help="Check behavioral data or not."
+        ),
+    ] = True,
+    check_ephys: Annotated[
+        bool,
+        typer.Option("--check-ephys/--ignore-ephys", help="Check ephys data or not."),
+    ] = True,
+    check_videos: Annotated[
+        bool,
+        typer.Option("--check-videos/--ignore-videos", help="Check videos data or not."),
+    ] = True,
+):
+    """
+    Validate experiemental data in the last session of a subject.
+
+    Example usage:
+        `bnd validate-last-session M017`
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not check_behavior, not check_ephys, not check_videos]):
+        raise ValueError("At least one data type must be checked.")
+
+    config = _load_config()
+
+    subject_path = config.LOCAL_PATH / processing_level / subject_name
+
+    # get the last valid session
+    last_session_path = get_last_session_path(subject_path, subject_name).absolute()
+
+    print(f"[bold]Last session found: [green]{last_session_path.name}", end="\n\n")
+
+    validate_raw_session(
+        last_session_path,
+        subject_name,
+        check_behavior,
+        check_ephys,
+        check_videos,
+    )
+
+
+@app.command()
 def rename_videos(
     session_path: Annotated[
         Path, typer.Argument(help="Path to session directory. Can be relative or absolute")
