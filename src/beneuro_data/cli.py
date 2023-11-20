@@ -44,7 +44,7 @@ def validate_session(
     ] = True,
 ):
     """
-    Validate experiemental data in a given session.
+    Validate experimental data in a given session.
 
     E.g. to check all kinds of data in the current working directory which is supposedly a session of subject called M017:
 
@@ -81,6 +81,10 @@ def validate_last_session(
     processing_level: Annotated[
         str, typer.Argument(help="Processing level of the session. raw or processed.")
     ] = "raw",
+    check_locally: Annotated[
+        bool,
+        typer.Option("--local/--remote", help="Check local or remote data."),
+    ] = True,
     check_behavior: Annotated[
         bool,
         typer.Option(
@@ -97,7 +101,7 @@ def validate_last_session(
     ] = True,
 ):
     """
-    Validate experiemental data in the last session of a subject.
+    Validate experimental data in the last session of a subject.
 
     Example usage:
         `bnd validate-last-session M017`
@@ -110,7 +114,9 @@ def validate_last_session(
 
     config = _load_config()
 
-    subject_path = config.LOCAL_PATH / processing_level / subject_name
+    root_path = config.LOCAL_PATH if check_locally else config.REMOTE_PATH
+
+    subject_path = root_path / processing_level / subject_name
 
     # get the last valid session
     last_session_path = get_last_session_path(subject_path, subject_name).absolute()
@@ -294,6 +300,10 @@ def validate_sessions(
         str,
         typer.Argument(help="Processing level of the session. raw or processed."),
     ],
+    check_locally: Annotated[
+        bool,
+        typer.Option("--local/--remote", help="Check local or remote data."),
+    ] = True,
     check_behavior: Annotated[
         bool,
         typer.Option(
@@ -323,7 +333,8 @@ def validate_sessions(
 
     config = _load_config()
 
-    subject_path = config.LOCAL_PATH / processing_level / subject_name
+    root_path = config.LOCAL_PATH if check_locally else config.REMOTE_PATH
+    subject_path = root_path / processing_level / subject_name
 
     for session_path in subject_path.iterdir():
         if session_path.is_dir():
