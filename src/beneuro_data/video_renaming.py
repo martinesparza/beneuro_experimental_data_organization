@@ -63,8 +63,31 @@ def rename_raw_videos_of_session(
                     f"Aborting renaming. {found_video_folder} and {expected_video_folder_path} both exist"
                 )
 
-            found_video_folder.rename(expected_video_folder_path)
-            old_and_new_paths.append((found_video_folder, expected_video_folder_path))
+            # if the videos are in the session's root
+            if found_video_folder == session_path:
+                # create the expected folder and move the videos and metadata.csv in there
+                expected_video_folder_path.mkdir()
+
+                # move the videos
+                for video_file_path in session_path.glob(f"**/*{video_extension}"):
+                    dest_path = expected_video_folder_path / video_file_path.name
+                    video_file_path.rename(dest_path)
+
+                    old_and_new_paths.append((video_file_path, dest_path))
+
+                # move the metadata.csv
+                metadata_path = found_video_folder / "metadata.csv"
+                assert metadata_path.exists()
+                metadata_path.rename(expected_video_folder_path / metadata_path.name)
+
+                old_and_new_paths.append(
+                    (metadata_path, expected_video_folder_path / metadata_path.name)
+                )
+            # otherwise just rename the folder
+            else:
+                found_video_folder.rename(expected_video_folder_path)
+
+                old_and_new_paths.append((found_video_folder, expected_video_folder_path))
 
             # at this point the folder should be as expected,
             # but filenames could be wrong, so try again
