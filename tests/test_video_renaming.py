@@ -15,6 +15,8 @@ test_cases = [
     ("M011_wrong_video_filenames.yaml", "M011_2023_04_04_16_00"),
     ("M011_wrong_video_folder.yaml", "M011_2023_04_04_16_00"),
     ("M011_old_video_naming.yaml", "M011_2023_04_04_16_00"),
+    ("M011_videos_in_root.yaml", "M011_2023_04_04_16_00"),
+    ("M011_videos_in_root_and_wrong_name.yaml", "M011_2023_04_04_16_00"),
 ]
 
 
