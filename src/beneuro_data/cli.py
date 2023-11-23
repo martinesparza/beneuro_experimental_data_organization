@@ -72,7 +72,7 @@ def validate_session(
 
 
 @app.command()
-def validate_last_session(
+def validate_last(
     subject_name: Annotated[
         str,
         typer.Argument(
@@ -105,7 +105,7 @@ def validate_last_session(
     Validate experimental data in the last session of a subject.
 
     Example usage:
-        `bnd validate-last-session M017`
+        `bnd validate-last M017`
     """
     if processing_level != "raw":
         raise NotImplementedError("Sorry, only raw data is supported for now.")
@@ -233,7 +233,7 @@ def upload_session(
 
 
 @app.command()
-def upload_last_session(
+def upload_last(
     subject_name: Annotated[
         str,
         typer.Argument(help="Name of the subject the session belongs to."),
@@ -260,7 +260,7 @@ def upload_last_session(
     Upload (raw) experimental data in the last session of a subject to the remote server.
 
     Example usage:
-        `bnd upload-last-session M017`
+        `bnd upload-last M017`
     """
     if processing_level != "raw":
         raise NotImplementedError("Sorry, only raw data is supported for now.")
