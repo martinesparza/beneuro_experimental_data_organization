@@ -9,6 +9,7 @@ from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
 from beneuro_data.video_renaming import rename_raw_videos_of_session
 from beneuro_data.config import _get_env_path, _load_config
+from beneuro_data.update_bnd import update_bnd
 
 
 app = typer.Typer()
@@ -424,6 +425,19 @@ def init():
         _check_root(config.REMOTE_PATH)
 
         print("[green]Config file created successfully.")
+
+
+@app.command()
+def self_update(
+    verbose: Annotated[
+        bool,
+        typer.Option(help="Print new commits that were pulled."),
+    ] = True,
+):
+    """
+    Update the bnd tool by pulling the latest commits from the repo's main branch.
+    """
+    update_bnd(print_new_commits=verbose)
 
 
 if __name__ == "__main__":
