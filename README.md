@@ -62,6 +62,10 @@ The tool needs to know where the experimental data is stored locally and remotel
   - `bnd validate-session . <subject-name>` if you're in the session's directory
   - `bnd validate-session /absolute/path/to/session/folder <subject-name>` from anywhere
   - `bnd validate-last <subject-name>` from anywhere to validate the last recorded session
+  - `bnd validate-today` from anywhere to validate all recorded sessions on the current day
+    - If it's trying to validate things in places like "treadmill-calibration" that are on the same level as subject directories, you can exclude checking in those places
+    by adding them to `IGNORED_SUBJECT_LEVEL_DIRS` in the `.env` config file (`IGNORED_SUBJECT_LEVEL_DIRS = ["treadmill-calibration", "other-stuff-you-want-to-ignore"]`)
+    - `bnd list-today` lets you check what sessions were recorded on the current day
  
   This will give you an error if there is a problem with the file structure.
 

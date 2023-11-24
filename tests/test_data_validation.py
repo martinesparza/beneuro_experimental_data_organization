@@ -23,7 +23,7 @@ NUM_VALID_SESSIONS_YAML_FOLDER = os.path.join(
 
 
 def _prepare_directory_structure(
-    tmp_path: pathlib.Path, yaml_folder_path: str, yaml_name: str
+    tmp_path: pathlib.Path, yaml_folder_path: str, yaml_name: str, wipe_raw_dir: bool = True
 ):
     tmp_raw_dir = tmp_path / "raw"
 
@@ -33,7 +33,8 @@ def _prepare_directory_structure(
 
         tmp_raw_dir.mkdir()
 
-    remake_raw_dir()
+    if wipe_raw_dir:
+        remake_raw_dir()
 
     with open(os.path.join(yaml_folder_path, yaml_name), "r") as f:
         mouse_dir_dict = YAML().load(f)

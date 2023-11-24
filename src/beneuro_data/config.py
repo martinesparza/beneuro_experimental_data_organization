@@ -10,6 +10,7 @@ def _get_env_path():
 class Config(BaseSettings):
     LOCAL_PATH: Path
     REMOTE_PATH: Path
+    IGNORED_SUBJECT_LEVEL_DIRS: list[str] = []
 
     class Config:
         env_file = _get_env_path()

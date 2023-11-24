@@ -1,10 +1,15 @@
 from pathlib import Path
 from typing_extensions import Annotated
+import datetime
 
 import typer
 from rich import print
 
-from beneuro_data.subject_sessions import get_last_session_path
+from beneuro_data.query_sessions import (
+    get_last_session_path,
+    list_subject_sessions_on_day,
+    list_all_sessions_on_day,
+)
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
 from beneuro_data.video_renaming import rename_raw_videos_of_session
@@ -339,6 +344,102 @@ def validate_sessions(
 
     for session_path in subject_path.iterdir():
         if session_path.is_dir():
+            try:
+                validate_raw_session(
+                    session_path,
+                    subject_name,
+                    check_behavior,
+                    check_ephys,
+                    check_videos,
+                )
+            except Exception as e:
+                print(f"[bold red]Problem with {session_path.name}: {e.args[0]}\n")
+            else:
+                print(f"[bold green]{session_path.name} looking good.\n")
+
+
+@app.command()
+def list_today(
+    processing_level: Annotated[
+        str,
+        typer.Argument(help="Processing level of the session. raw or processed."),
+    ] = "raw",
+    check_locally: Annotated[
+        bool,
+        typer.Option("--local/--remote", help="Check local or remote data."),
+    ] = True,
+) -> list[tuple[str, str]]:
+    """
+    List all sessions of all subjects that happened today.
+    """
+    if processing_level not in ["raw", "processed"]:
+        raise ValueError("Processing level must be raw or processed.")
+
+    config = _load_config()
+    root_path = config.LOCAL_PATH if check_locally else config.REMOTE_PATH
+
+    raw_or_processed_path = root_path / processing_level
+    if not raw_or_processed_path.exists():
+        raise FileNotFoundError(f"{raw_or_processed_path} found.")
+
+    today = datetime.datetime.today()
+
+    todays_sessions_with_subject = list_all_sessions_on_day(
+        raw_or_processed_path, today, config.IGNORED_SUBJECT_LEVEL_DIRS
+    )
+
+    for subj, sess in todays_sessions_with_subject:
+        print(f"{subj} - {sess}")
+
+
+@app.command()
+def validate_today(
+    processing_level: Annotated[
+        str,
+        typer.Argument(help="Processing level of the session. raw or processed."),
+    ] = "raw",
+    check_locally: Annotated[
+        bool,
+        typer.Option("--local/--remote", help="Check local or remote data."),
+    ] = True,
+    check_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--check-behavior/--ignore-behavior", help="Check behavioral data or not."
+        ),
+    ] = True,
+    check_ephys: Annotated[
+        bool,
+        typer.Option("--check-ephys/--ignore-ephys", help="Check ephys data or not."),
+    ] = True,
+    check_videos: Annotated[
+        bool,
+        typer.Option("--check-videos/--ignore-videos", help="Check videos data or not."),
+    ] = True,
+):
+    """
+    Validate all sessions of all subjects that happened today.
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not check_behavior, not check_ephys, not check_videos]):
+        raise ValueError("At least one data type must be checked.")
+
+    config = _load_config()
+    root_path = config.LOCAL_PATH if check_locally else config.REMOTE_PATH
+    raw_or_processed_path = root_path / processing_level
+
+    today = datetime.datetime.today()
+
+    for subject_path in raw_or_processed_path.iterdir():
+        if not subject_path.is_dir():
+            continue
+
+        subject_name = subject_path.name
+        todays_sessions_with_subject = list_subject_sessions_on_day(subject_path, today)
+        for session_name in todays_sessions_with_subject:
+            session_path = subject_path / session_name
             try:
                 validate_raw_session(
                     session_path,

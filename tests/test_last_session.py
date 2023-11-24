@@ -5,7 +5,7 @@ from pathlib import Path
 
 from test_data_validation import _prepare_directory_structure
 
-from beneuro_data.subject_sessions import get_last_session_path
+from beneuro_data.query_sessions import get_last_session_path
 
 TEST_DIR_PATH = Path(__file__).parent
 SUBJECT_SESSION_LIST_YAML_FOLDER = TEST_DIR_PATH / "subject_session_list_yamls"
