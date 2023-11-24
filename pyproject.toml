@@ -36,3 +36,10 @@ bnd = "beneuro_data.cli:app"
 
 [tool.black]
 line-length = 92
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    "ignore:.*No correctly named video folder found*:UserWarning",
+    "ignore:.*No PyControl task folder found*:UserWarning",
+    "ignore:.*More than one raw ephys recordings found*:UserWarning",
+]
