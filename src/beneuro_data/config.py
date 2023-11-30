@@ -11,7 +11,7 @@ class Config(BaseSettings):
     LOCAL_PATH: Path
     REMOTE_PATH: Path
     IGNORED_SUBJECT_LEVEL_DIRS: tuple[str, ...] = ("treadmill-calibration",)
-    WHITELISTED_FILES_IN_ROOT: tuple[str, ...] = ("comments.txt", "traj_plan.txt")
+    WHITELISTED_FILES_IN_ROOT: tuple[str, ...] = ("comment.txt", "traj_plan.txt")
     EXTENSIONS_TO_RENAME_AND_UPLOAD: tuple[str, ...] = (".txt",)
 
     class Config:
