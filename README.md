@@ -85,9 +85,14 @@ Please note that running validation will only give you the first problem that po
 ## Renaming the videos
 The default naming Jarvis uses for the video folder and files doesn't match the convention we want to follow.
 
-Files can be renamed with `bnd rename-videos . <subject-name>`.
+Files can be renamed with `bnd rename-videos . <subject-name>` (or specifying the path instead of `.` if the current working directory is not the session's directory).
 
 Add `--verbose` to the end to see what files were renamed.
+
+## Renaming the extra files
+Sometimes the experimenter leaves comments in a `comment.txt` file or saves some extra `.txt` files in the electrophysiology recording folders.
+
+To rename these files to follow the naming convention of `<session-name>_<filename>`, you can use the `bnd rename-extra-files` command.
 
 ## Uploading the data
 Once you're done recording a session, you can upload that session to the server with:
@@ -98,6 +103,6 @@ or if you don't want to `cd` into the session's directory:
 
   `bnd upload-last <subject-name>`
 
-This should first validate the data, then copy it to the server, and complain if it's already there.
+This should first rename the videos and extra files (unless otherwise specified), validate the data, then copy it to the server, and complain if it's already there.
 
 # Please file an issue if something doesn't work or is just annoying to use!

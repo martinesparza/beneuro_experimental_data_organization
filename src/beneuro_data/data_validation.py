@@ -4,6 +4,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+from beneuro_data.extra_file_handling import _find_whitelisted_files_in_root
+
 # this is the expected format the end of the session folder should have
 # e.g. M016_2023_08_15_16_00
 EXPECTED_DATE_FORMAT: str = "%Y_%m_%d_%H_%M"
@@ -126,10 +128,11 @@ def validate_raw_behavioral_data_of_session(
         all_files_with_extension = list(session_path.glob(rf"*{extension}"))
         for ext_file in all_files_with_extension:
             # sometimes the experimenter leaves comments in a comment.txt file
-            if ext_file.name in whitelisted_files_in_root:
-                # include this file in the list of behavioral data files found
-                # NOTE not adding this, it will be done when processing the extra files
-                # behavioral_data_files.append(ext_file)
+            # or saves the trajectory plan in traj_plan.txt
+            # these files are saved in the whitelist
+            if ext_file in _find_whitelisted_files_in_root(
+                session_path, whitelisted_files_in_root
+            ):
                 # remove it from the list that will be compared to the expected number of pycontrol files
                 all_files_with_extension.remove(ext_file)
                 # skip testing if it matches the pycontrol pattern

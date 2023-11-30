@@ -11,9 +11,12 @@ from beneuro_data.data_validation import (
 
 from beneuro_data.validate_argument import validate_argument
 
-from beneuro_data.rename_extra_files import (
-    rename_whitelisted_files_in_root,
-    rename_extra_files_with_extension,
+from beneuro_data.video_renaming import rename_raw_videos_of_session
+
+from beneuro_data.extra_file_handling import (
+    rename_extra_files_in_session,
+    _find_extra_files_with_extension,
+    _find_whitelisted_files_in_root,
 )
 
 
@@ -60,7 +63,28 @@ def upload_raw_session(
     include_extra_files: bool,
     whitelisted_files_in_root: tuple[str, ...],
     allowed_extensions_not_in_root: tuple[str, ...],
+    rename_videos_first: bool,
+    rename_extra_files_first: bool,
 ):
+    # have to rename first so that validation passes
+    if rename_videos_first:
+        if not include_videos:
+            raise ValueError(
+                "Do not rename videos with upload_raw_session if you're not uploading them."
+            )
+
+        rename_raw_videos_of_session(local_session_path, subject_name)
+
+    if rename_extra_files_first:
+        if not include_extra_files:
+            raise ValueError(
+                "Do not rename extra files with upload_raw_session if you're not uploading them."
+            )
+
+        rename_extra_files_in_session(
+            local_session_path, whitelisted_files_in_root, allowed_extensions_not_in_root
+        )
+
     # check everything we want to upload
     validate_raw_session(
         local_session_path,
@@ -359,28 +383,30 @@ def upload_extra_files(
 ):
     remote_session_path = remote_root / local_session_path.relative_to(local_root)
 
-    # 1. rename whitelisted files in root and upload them
-    new_whitelisted_paths_in_root = rename_whitelisted_files_in_root(
+    # rename extra files first
+    rename_extra_files_in_session(
+        local_session_path, whitelisted_files_in_root, allowed_extensions_not_in_root
+    )
+
+    # 1. rename whitelisted files
+    whitelisted_paths_in_root = _find_whitelisted_files_in_root(
         local_session_path, whitelisted_files_in_root
     )
 
-    for local_path in new_whitelisted_paths_in_root:
-        remote_path = remote_session_path / local_path.relative_to(local_session_path)
-        if remote_path.exists():
-            raise FileExistsError(f"Remote file already exists: {remote_path}")
-        shutil.copy2(local_path, remote_path)
-
-    # 2. rename extra files with the allowed extensions and upload them
+    # 2. find extra files with allowed extensions
     extra_files_with_allowed_extensions = []
     for extension in allowed_extensions_not_in_root:
         extra_files_with_allowed_extensions.extend(
-            rename_extra_files_with_extension(local_session_path, extension)
+            _find_extra_files_with_extension(local_session_path, extension)
         )
 
-    for local_path in extra_files_with_allowed_extensions:
+    # 4. copy the files to the server
+    for local_path in whitelisted_paths_in_root + extra_files_with_allowed_extensions:
         remote_path = remote_session_path / local_path.relative_to(local_session_path)
         if remote_path.exists():
-            raise FileExistsError(f"Remote file already exists: {remote_path}")
+            # it was most likely already copied when copying the recording folders
+            print(f"Skipping copying because emote file already exists: {remote_path}")
+            continue
         shutil.copy2(local_path, remote_path)
 
 

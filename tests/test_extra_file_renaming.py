@@ -5,9 +5,9 @@ from pathlib import Path
 import os
 from typing import Optional, Type
 
-from beneuro_data.rename_extra_files import (
-    rename_whitelisted_files_in_root,
-    rename_extra_files_with_extension,
+from beneuro_data.extra_file_handling import (
+    _rename_whitelisted_files_in_root,
+    _rename_extra_files_with_extension,
 )
 
 from test_data_validation import TEST_DIR_PATH, _prepare_directory_structure
@@ -72,7 +72,7 @@ def test_rename_whitelisted_files_in_root(
 
     if test_case.expected_error is None:
         # rename the whitelisted files
-        rename_whitelisted_files_in_root(session_path, WHITELISTED_FILES_IN_ROOT)
+        _rename_whitelisted_files_in_root(session_path, WHITELISTED_FILES_IN_ROOT)
 
         # make sure the files are in their new place
         # and the old ones are gone
@@ -84,7 +84,7 @@ def test_rename_whitelisted_files_in_root(
 
     elif issubclass(test_case.expected_error, BaseException):
         with pytest.raises(test_case.expected_error):
-            rename_whitelisted_files_in_root(session_path, WHITELISTED_FILES_IN_ROOT)
+            _rename_whitelisted_files_in_root(session_path, WHITELISTED_FILES_IN_ROOT)
 
 
 @dataclass
@@ -142,7 +142,7 @@ def test_rename_extra_files_with_extension(
     if test_case.expected_error is None:
         # rename the whitelisted files
         for extension in EXTENSIONS_TO_RENAME_AND_UPLOAD:
-            rename_extra_files_with_extension(session_path, extension)
+            _rename_extra_files_with_extension(session_path, extension)
 
         # make sure the files are in their new place
         # and the old ones are gone
@@ -158,4 +158,4 @@ def test_rename_extra_files_with_extension(
     elif issubclass(test_case.expected_error, BaseException):
         with pytest.raises(test_case.expected_error):
             for extension in EXTENSIONS_TO_RENAME_AND_UPLOAD:
-                rename_extra_files_with_extension(session_path, extension)
+                _rename_extra_files_with_extension(session_path, extension)
