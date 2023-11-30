@@ -67,12 +67,16 @@ def validate_session(
     if not session_path.absolute().exists():
         raise ValueError("Session path does not exist.")
 
+    config = _load_config()
+
     validate_raw_session(
         session_path.absolute(),
         subject_name,
         check_behavior,
         check_ephys,
         check_videos,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
     )
 
 
@@ -135,6 +139,8 @@ def validate_last(
         check_behavior,
         check_ephys,
         check_videos,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
     )
 
 
@@ -209,6 +215,13 @@ def upload_session(
         bool,
         typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
     ] = True,
+    include_extra_files: Annotated[
+        bool,
+        typer.Option(
+            "--include-extra-files/--ignore-extra-files",
+            help="Upload extra files that are created by the experimenter or other software.",
+        ),
+    ] = True,
 ):
     """
     Upload (raw) experimental data in a given session to the remote server.
@@ -232,6 +245,9 @@ def upload_session(
         include_behavior,
         include_ephys,
         include_videos,
+        include_extra_files,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
     )
 
     return True
@@ -259,6 +275,13 @@ def upload_last(
     include_videos: Annotated[
         bool,
         typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
+    ] = True,
+    include_extra_files: Annotated[
+        bool,
+        typer.Option(
+            "--include-extra-files/--ignore-extra-files",
+            help="Upload extra files that are created by the experimenter or other software.",
+        ),
     ] = True,
 ):
     """
@@ -294,6 +317,9 @@ def upload_last(
         include_behavior,
         include_ephys,
         include_videos,
+        include_extra_files,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
     )
 
     return True
@@ -351,6 +377,8 @@ def validate_sessions(
                     check_behavior,
                     check_ephys,
                     check_videos,
+                    config.WHITELISTED_FILES_IN_ROOT,
+                    config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
                 )
             except Exception as e:
                 print(f"[bold red]Problem with {session_path.name}: {e.args[0]}\n")
@@ -447,6 +475,8 @@ def validate_today(
                     check_behavior,
                     check_ephys,
                     check_videos,
+                    config.WHITELISTED_FILES_IN_ROOT,
+                    config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
                 )
             except Exception as e:
                 print(f"[bold red]Problem with {session_path.name}: {e.args[0]}\n")
@@ -511,6 +541,7 @@ def init():
             typer.prompt("Enter the absolute path to the root of the local data storage")
         )
         _check_root(local_path)
+
         remote_path = Path(
             typer.prompt("Enter the absolute path to the root of remote data storage")
         )

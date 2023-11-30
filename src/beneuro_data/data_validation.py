@@ -19,15 +19,21 @@ def validate_raw_session(
     include_behavior: bool,
     include_ephys: bool,
     include_videos: bool,
+    whitelisted_files_in_root: tuple[str, ...],
+    allowed_extensions_not_in_root: tuple[str, ...],
 ):
     behavior_files = []
     ephys_folder_paths = []
     video_folder_path = None
 
     if include_behavior:
-        behavior_files = validate_raw_behavioral_data_of_session(session_path, subject_name)
+        behavior_files = validate_raw_behavioral_data_of_session(
+            session_path, subject_name, whitelisted_files_in_root
+        )
     if include_ephys:
-        ephys_folder_paths = validate_raw_ephys_data_of_session(session_path, subject_name)
+        ephys_folder_paths = validate_raw_ephys_data_of_session(
+            session_path, subject_name, allowed_extensions_not_in_root
+        )
     if include_videos:
         video_folder_path = validate_raw_videos_of_session(session_path, subject_name)
 
@@ -82,7 +88,10 @@ def validate_session_path(session_path: Path, subject_name: str):
 
 
 def validate_raw_behavioral_data_of_session(
-    session_path: Path, subject_name: str, warn_if_no_pycontrol_py_folder: bool = True
+    session_path: Path,
+    subject_name: str,
+    whitelisted_files_in_root: tuple[str, ...],
+    warn_if_no_pycontrol_py_folder: bool = True,
 ) -> list[Path]:
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
@@ -117,9 +126,10 @@ def validate_raw_behavioral_data_of_session(
         all_files_with_extension = list(session_path.glob(rf"*{extension}"))
         for ext_file in all_files_with_extension:
             # sometimes the experimenter leaves comments in a comment.txt file
-            if ext_file.name == "comment.txt":
+            if ext_file.name in whitelisted_files_in_root:
                 # include this file in the list of behavioral data files found
-                behavioral_data_files.append(ext_file)
+                # NOTE not adding this, it will be done when processing the extra files
+                # behavioral_data_files.append(ext_file)
                 # remove it from the list that will be compared to the expected number of pycontrol files
                 all_files_with_extension.remove(ext_file)
                 # skip testing if it matches the pycontrol pattern
@@ -127,7 +137,7 @@ def validate_raw_behavioral_data_of_session(
 
             if re.match(pycontrol_pattern_for_extension, ext_file.name) is None:
                 raise ValueError(
-                    f"Filename does not match expected pattern for PyControl {extension} files: {ext_file}"
+                    f"Filename does not match expected pattern for PyControl {extension} files and is not in the whitelist: {ext_file}"
                 )
 
         # at this point if there was no fail, then all files match the pycontrol pattern
@@ -164,7 +174,11 @@ def validate_raw_behavioral_data_of_session(
     return behavioral_data_files
 
 
-def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str) -> list[Path]:
+def validate_raw_ephys_data_of_session(
+    session_path: Path,
+    subject_name: str,
+    allowed_extensions_not_in_root: tuple[str, ...],
+) -> list[Path]:
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
@@ -181,7 +195,7 @@ def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str) ->
 
     # validate the structure in the recording folders that we found
     for recording_path in recording_folder_paths:
-        validate_raw_ephys_recording(recording_path)
+        validate_raw_ephys_recording(recording_path, allowed_extensions_not_in_root)
 
     # search subfolders for spikeglx filetypes and make sure that all of them are in the recording folders found
     spikeglx_endings = [".lf.meta", ".lf.bin", ".ap.meta", ".ap.bin"]
@@ -198,7 +212,9 @@ def validate_raw_ephys_data_of_session(session_path: Path, subject_name: str) ->
     return recording_folder_paths
 
 
-def validate_raw_ephys_recording(gid_folder_path: Path):
+def validate_raw_ephys_recording(
+    gid_folder_path: Path, allowed_extensions_not_in_root: tuple[str, ...]
+):
     # extract gx part
     gid = extract_gid(gid_folder_path.name)
 
@@ -216,6 +232,10 @@ def validate_raw_ephys_recording(gid_folder_path: Path):
     for child in gid_folder_path.iterdir():
         # hidden files are allowed
         if child.match(".*"):
+            continue
+
+        # files with some extensions are allowed and will be renamed and uploaded
+        if child.suffix in allowed_extensions_not_in_root:
             continue
 
         if not child.is_dir():

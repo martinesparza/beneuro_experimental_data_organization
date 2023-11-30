@@ -20,6 +20,11 @@ DIRECTORY_STRUCTURE_YAML_FOLDER = os.path.join(
 NUM_VALID_SESSIONS_YAML_FOLDER = os.path.join(
     TEST_DIR_PATH, "number_of_valid_sessions_test_yamls"
 )
+WHITELISTED_FILES_IN_ROOT = (
+    "comment.txt",
+    "traj_plan.txt",
+)
+EXTENSIONS_TO_RENAME_AND_UPLOAD = (".txt",)
 
 
 def _prepare_directory_structure(
@@ -60,17 +65,41 @@ class DirectoryStructureTestCase:
 
         if self.error_type is None:
             for session_path in subject_dir.iterdir():
-                validate_raw_session(session_path, self.mouse_name, True, True, True)
+                validate_raw_session(
+                    session_path,
+                    self.mouse_name,
+                    True,
+                    True,
+                    True,
+                    WHITELISTED_FILES_IN_ROOT,
+                    EXTENSIONS_TO_RENAME_AND_UPLOAD,
+                )
 
         elif issubclass(self.error_type, Warning):
             with pytest.warns(self.error_type, match=self.error_message):
                 for session_path in subject_dir.iterdir():
-                    validate_raw_session(session_path, self.mouse_name, True, True, True)
+                    validate_raw_session(
+                        session_path,
+                        self.mouse_name,
+                        True,
+                        True,
+                        True,
+                        WHITELISTED_FILES_IN_ROOT,
+                        EXTENSIONS_TO_RENAME_AND_UPLOAD,
+                    )
 
         elif issubclass(self.error_type, BaseException):
             with pytest.raises(self.error_type, match=self.error_message):
                 for session_path in subject_dir.iterdir():
-                    validate_raw_session(session_path, self.mouse_name, True, True, True)
+                    validate_raw_session(
+                        session_path,
+                        self.mouse_name,
+                        True,
+                        True,
+                        True,
+                        WHITELISTED_FILES_IN_ROOT,
+                        EXTENSIONS_TO_RENAME_AND_UPLOAD,
+                    )
 
 
 test_cases = [
@@ -164,10 +193,20 @@ test_cases = [
         None,
         "",
     ),
+    DirectoryStructureTestCase(
+        "M011_unexpected_txt_in_root.yaml",
+        ValueError,
+        "Filename does not match expected pattern for PyControl",
+    ),
+    DirectoryStructureTestCase(
+        "M011_trajectory_and_channel_map_in_probe.yaml",
+        None,
+        "",
+    ),
 ]
 
 
-@pytest.mark.parametrize("test_case", test_cases)
+@pytest.mark.parametrize("test_case", test_cases, ids=[tc.yaml_name for tc in test_cases])
 def test_validation(tmp_path, test_case: DirectoryStructureTestCase):
     _prepare_directory_structure(
         tmp_path, DIRECTORY_STRUCTURE_YAML_FOLDER, test_case.yaml_name
@@ -192,7 +231,15 @@ class NumValidSessionsTestCase:
         for session_path in subject_path.iterdir():
             # a valid session is one that doesn't throw an error
             try:
-                validate_raw_session(session_path, self.mouse_name, True, True, True)
+                validate_raw_session(
+                    session_path,
+                    self.mouse_name,
+                    True,
+                    True,
+                    True,
+                    WHITELISTED_FILES_IN_ROOT,
+                    EXTENSIONS_TO_RENAME_AND_UPLOAD,
+                )
                 n_valid_sessions_found += 1
             except:
                 pass

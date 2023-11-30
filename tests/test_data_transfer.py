@@ -7,7 +7,11 @@ import pytest
 from beneuro_data.data_transfer import sync_subject_dir, upload_raw_session
 from beneuro_data.data_validation import WrongNumberOfFilesError
 
-from test_data_validation import _prepare_directory_structure
+from test_data_validation import (
+    _prepare_directory_structure,
+    WHITELISTED_FILES_IN_ROOT,
+    EXTENSIONS_TO_RENAME_AND_UPLOAD,
+)
 
 TEST_DIR_PATH = os.path.dirname(__file__)
 UPLOAD_RAW_SESSION_YAML_FOLDER = os.path.join(
@@ -175,6 +179,33 @@ raw_session_upload_test_cases = [
         True,
     ),
     RawSessionUploadTestCase(
+        "M011_with_extra_txt_files.yaml",
+        "M011_2023_04_04_16_00",
+        None,
+        None,
+        True,
+        True,
+        True,
+    ),
+    RawSessionUploadTestCase(
+        "M011_with_traj_plan_txt.yaml",
+        "M011_2023_04_04_16_00",
+        None,
+        None,
+        True,
+        True,
+        True,
+    ),
+    RawSessionUploadTestCase(
+        "M011_with_comment_txt.yaml",
+        "M011_2023_04_04_16_00",
+        None,
+        None,
+        True,
+        True,
+        True,
+    ),
+    RawSessionUploadTestCase(
         "M011_correct_but_no_behavior.yaml",
         "M011_2023_04_04_16_00",
         WrongNumberOfFilesError,
@@ -243,7 +274,11 @@ raw_session_upload_test_cases = [
 ]
 
 
-@pytest.mark.parametrize("test_case", raw_session_upload_test_cases)
+@pytest.mark.parametrize(
+    "test_case",
+    raw_session_upload_test_cases,
+    ids=[tc.yaml_name for tc in raw_session_upload_test_cases],
+)
 def test_upload_raw_session(tmp_path, test_case: RawSessionUploadTestCase):
     source_base_path = tmp_path / "source_dir"
     dest_base_path = tmp_path / "dest_dir"
@@ -270,6 +305,9 @@ def test_upload_raw_session(tmp_path, test_case: RawSessionUploadTestCase):
             test_case.include_behavior,
             test_case.include_ephys,
             test_case.include_videos,
+            True,
+            WHITELISTED_FILES_IN_ROOT,
+            EXTENSIONS_TO_RENAME_AND_UPLOAD,
         )
 
         import filecmp
@@ -289,4 +327,7 @@ def test_upload_raw_session(tmp_path, test_case: RawSessionUploadTestCase):
                 test_case.include_behavior,
                 test_case.include_ephys,
                 test_case.include_videos,
+                True,
+                WHITELISTED_FILES_IN_ROOT,
+                EXTENSIONS_TO_RENAME_AND_UPLOAD,
             )

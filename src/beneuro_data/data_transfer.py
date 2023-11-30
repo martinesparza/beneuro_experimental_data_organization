@@ -11,6 +11,11 @@ from beneuro_data.data_validation import (
 
 from beneuro_data.validate_argument import validate_argument
 
+from beneuro_data.rename_extra_files import (
+    rename_whitelisted_files_in_root,
+    rename_extra_files_with_extension,
+)
+
 
 @validate_argument("processing_level", ["raw", "processed"])
 def sync_subject_dir(
@@ -52,6 +57,9 @@ def upload_raw_session(
     include_behavior: bool,
     include_ephys: bool,
     include_videos: bool,
+    include_extra_files: bool,
+    whitelisted_files_in_root: tuple[str, ...],
+    allowed_extensions_not_in_root: tuple[str, ...],
 ):
     # check everything we want to upload
     validate_raw_session(
@@ -60,6 +68,8 @@ def upload_raw_session(
         include_behavior,
         include_ephys,
         include_videos,
+        whitelisted_files_in_root,
+        allowed_extensions_not_in_root,
     )
 
     if include_behavior:
@@ -68,6 +78,7 @@ def upload_raw_session(
             subject_name,
             local_root,
             remote_root,
+            whitelisted_files_in_root,
         )
     if include_ephys:
         upload_raw_ephys_data(
@@ -75,6 +86,7 @@ def upload_raw_session(
             subject_name,
             local_root,
             remote_root,
+            allowed_extensions_not_in_root,
         )
     if include_videos:
         upload_raw_videos(
@@ -82,6 +94,15 @@ def upload_raw_session(
             subject_name,
             local_root,
             remote_root,
+        )
+    if include_extra_files:
+        upload_extra_files(
+            local_session_path,
+            subject_name,
+            local_root,
+            remote_root,
+            whitelisted_files_in_root,
+            allowed_extensions_not_in_root,
         )
 
     return True
@@ -92,6 +113,7 @@ def upload_raw_behavioral_data(
     subject_name: str,
     local_root: Path,
     remote_root: Path,
+    whitelisted_files_in_root: tuple[str, ...],
 ):
     processing_level = "raw"
     remote_folders_created = []
@@ -109,7 +131,10 @@ def upload_raw_behavioral_data(
     # 1. make sure locally the things are valid
     # TODO how about this one returning a dataclass with some diagnostics like pycontrol folder exists or not?
     local_file_paths = validate_raw_behavioral_data_of_session(
-        local_session_path, subject_name, warn_if_no_pycontrol_py_folder=True
+        local_session_path,
+        subject_name,
+        whitelisted_files_in_root,
+        warn_if_no_pycontrol_py_folder=True,
     )
 
     # 2. check if there are remote files already
@@ -167,7 +192,10 @@ def upload_raw_behavioral_data(
 
     # 5. check that the files are there and they are identical
     remote_file_paths_there = validate_raw_behavioral_data_of_session(
-        remote_session_path, subject_name, warn_if_no_pycontrol_py_folder=False
+        remote_session_path,
+        subject_name,
+        whitelisted_files_in_root,
+        warn_if_no_pycontrol_py_folder=False,
     )
 
     if sorted(remote_file_paths_there) != sorted(remote_file_paths):
@@ -183,6 +211,7 @@ def upload_raw_ephys_data(
     subject_name: str,
     local_root: Path,
     remote_root: Path,
+    allowed_extensions_not_in_root: tuple[str, ...],
 ):
     processing_level = "raw"
     remote_folders_created = []
@@ -200,7 +229,7 @@ def upload_raw_ephys_data(
 
     # make sure locally the things are valid
     local_recording_folder_paths = validate_raw_ephys_data_of_session(
-        local_session_path, subject_name
+        local_session_path, subject_name, allowed_extensions_not_in_root
     )
     if len(local_recording_folder_paths) == 0:
         raise FileNotFoundError(
@@ -320,6 +349,42 @@ def upload_raw_videos(
     return True
 
 
+def upload_extra_files(
+    local_session_path: Path,
+    subject_name: str,
+    local_root: Path,
+    remote_root: Path,
+    whitelisted_files_in_root: tuple[str, ...],
+    allowed_extensions_not_in_root: tuple[str, ...],
+):
+    remote_session_path = remote_root / local_session_path.relative_to(local_root)
+
+    # 1. rename whitelisted files in root and upload them
+    new_whitelisted_paths_in_root = rename_whitelisted_files_in_root(
+        local_session_path, whitelisted_files_in_root
+    )
+
+    for local_path in new_whitelisted_paths_in_root:
+        remote_path = remote_session_path / local_path.relative_to(local_session_path)
+        if remote_path.exists():
+            raise FileExistsError(f"Remote file already exists: {remote_path}")
+        shutil.copy2(local_path, remote_path)
+
+    # 2. rename extra files with the allowed extensions and upload them
+    extra_files_with_allowed_extensions = []
+    for extension in allowed_extensions_not_in_root:
+        extra_files_with_allowed_extensions.extend(
+            rename_extra_files_with_extension(local_session_path, extension)
+        )
+
+    for local_path in extra_files_with_allowed_extensions:
+        remote_path = remote_session_path / local_path.relative_to(local_session_path)
+        if remote_path.exists():
+            raise FileExistsError(f"Remote file already exists: {remote_path}")
+        shutil.copy2(local_path, remote_path)
+
+
+# NOTE This will fail, but it's expected and should be rewritten
 def download_raw_session(
     remote_session_path: Path,
     subject_name: str,
@@ -328,10 +393,11 @@ def download_raw_session(
     include_behavior: bool,
     include_ephys: bool,
     include_videos: bool,
+    whitelisted_files_in_root: tuple[str, ...],
 ):
     # check what data the session has on the server
     behavior_files, ephys_folder_paths, video_folder_path = validate_raw_session(
-        remote_session_path, subject_name, True, True, True
+        remote_session_path, subject_name, True, True, True, whitelisted_files_in_root
     )
 
     include_behavior = include_behavior and len(behavior_files) > 0
