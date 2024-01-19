@@ -12,8 +12,8 @@ except ImportError as e:
     ) from e
 
 from beneuro_data.data_validation import (
-    validate_raw_ephys_data_of_session,
     _find_spikeglx_recording_folders_in_session,
+    validate_raw_ephys_data_of_session,
 )
 
 
