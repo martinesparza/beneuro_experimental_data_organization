@@ -117,6 +117,13 @@ def validate_raw_behavioral_data_of_session(
     # pycontrol_middle_pattern = rf'{self.session.date.strftime("%Y-%m-%d")}-\d{{6}}'
     pycontrol_middle_pattern = r".*"
 
+    # sometimes the experimenter leaves comments in a comment.txt file
+    # or saves the trajectory plan in traj_plan.txt/trajectory.txt
+    # these files are saved in the whitelist
+    whitelisted_files_found = _find_whitelisted_files_in_root(
+        session_path, whitelisted_files_in_root
+    )
+
     for extension in pycontrol_ending_pattern_per_extension.keys():
         pycontrol_pattern_for_extension = (
             pycontrol_start_pattern
@@ -126,16 +133,10 @@ def validate_raw_behavioral_data_of_session(
 
         # this one is not that precise
         all_files_with_extension = list(session_path.glob(rf"*{extension}"))
+
+        pycontrol_files_with_extension = []
         for ext_file in all_files_with_extension:
-            # sometimes the experimenter leaves comments in a comment.txt file
-            # or saves the trajectory plan in traj_plan.txt
-            # these files are saved in the whitelist
-            if ext_file in _find_whitelisted_files_in_root(
-                session_path, whitelisted_files_in_root
-            ):
-                # remove it from the list that will be compared to the expected number of pycontrol files
-                all_files_with_extension.remove(ext_file)
-                # skip testing if it matches the pycontrol pattern
+            if ext_file in whitelisted_files_found:
                 continue
 
             if re.match(pycontrol_pattern_for_extension, ext_file.name) is None:
@@ -143,17 +144,20 @@ def validate_raw_behavioral_data_of_session(
                     f"Filename does not match expected pattern for PyControl {extension} files and is not in the whitelist: {ext_file}"
                 )
 
+            # if it looks like a pycontrol file, add it to the list
+            pycontrol_files_with_extension.append(ext_file)
+
         # at this point if there was no fail, then all files match the pycontrol pattern
-        n_files_found = len(all_files_with_extension)
+        n_files_found = len(pycontrol_files_with_extension)
         n_files_expected = expected_number_of_pycontrol_files_per_extension[extension]
 
         if n_files_found != n_files_expected:
             raise WrongNumberOfFilesError(
-                f"Expected {n_files_expected} files with extension {extension}. Found {n_files_found}"
+                f"Expected {n_files_expected} files with extension {extension}. Found {n_files_found}."
             )
 
         # if there was no error, add the files to the list
-        behavioral_data_files.extend(all_files_with_extension)
+        behavioral_data_files.extend(pycontrol_files_with_extension)
 
     # check if there is a folder for .py files that run the task
     # warn if there is none

@@ -10,13 +10,19 @@ from beneuro_data.extra_file_handling import (
     _rename_extra_files_with_extension,
 )
 
-from test_data_validation import TEST_DIR_PATH, _prepare_directory_structure
+from test_data_validation import (
+    TEST_DIR_PATH,
+    _prepare_directory_structure,
+    validate_raw_session,
+)
 
 EXTRA_FILE_RENAMING_YAML_FOLDER = Path(TEST_DIR_PATH) / "extra_file_renaming_test_yamls"
 
 WHITELISTED_FILES_IN_ROOT = (
     "comment.txt",
     "traj_plan.txt",
+    "trajectory.txt",
+    "channel_map.txt",
 )
 
 EXTENSIONS_TO_RENAME_AND_UPLOAD = (".txt",)
@@ -81,6 +87,16 @@ def test_rename_whitelisted_files_in_root(
 
         for fname in test_case.orig_filenames:
             assert not (session_path / fname).exists()
+
+        validate_raw_session(
+            session_path,
+            subject_name,
+            True,
+            True,
+            True,
+            WHITELISTED_FILES_IN_ROOT,
+            EXTENSIONS_TO_RENAME_AND_UPLOAD,
+        )
 
     elif issubclass(test_case.expected_error, BaseException):
         with pytest.raises(test_case.expected_error):
