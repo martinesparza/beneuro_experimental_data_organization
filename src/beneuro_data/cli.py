@@ -14,7 +14,7 @@ from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
 from beneuro_data.video_renaming import rename_raw_videos_of_session
 from beneuro_data.config import _get_env_path, _load_config
-from beneuro_data.update_bnd import update_bnd
+from beneuro_data.update_bnd import update_bnd, check_for_updates
 from beneuro_data.extra_file_handling import rename_extra_files_in_session
 
 
@@ -659,6 +659,14 @@ def init():
         _check_root(config.REMOTE_PATH)
 
         print("[green]Config file created successfully.")
+
+
+@app.command()
+def check_updates():
+    """
+    Check if there are any new commits on the repo's main branch.
+    """
+    check_for_updates()
 
 
 @app.command()

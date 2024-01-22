@@ -22,7 +22,24 @@ def _get_new_commits(repo_path: str) -> list[str]:
     # Check if origin/main has new commits compared to the local branch
     new_commits = _run_git_command(repo_path, ["log", "HEAD..origin/main", "--oneline"])
 
-    return new_commits.split("\n")
+    return [commit.strip() for commit in new_commits.split("\n") if commit.strip() != ""]
+
+
+def check_for_updates() -> bool:
+    package_path = Path(__file__).absolute().parent.parent.parent
+
+    new_commits = _get_new_commits(package_path)
+
+    if len(new_commits) > 0:
+        print("New commits found, run `bnd self-update` to update the package.")
+        for commit in new_commits:
+            print(f" - {commit}")
+
+        return True
+
+    print("No new commits found, package is up to date.")
+
+    return False
 
 
 def update_bnd(print_new_commits: bool = False):
