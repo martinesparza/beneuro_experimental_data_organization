@@ -22,7 +22,7 @@ def convert_to_nwb(
     allowed_extensions_not_in_root: tuple[str, ...],
     run_kilosort: bool,
     stream_names_to_process: Optional[tuple[str, ...]] = None,
-    clean_up_temp_files: Optional[bool] = False,
+    clean_up_temp_files: Optional[bool] = True,
 ):
     # make sure the kilosort arguments are given
     # if run_kilosort:
