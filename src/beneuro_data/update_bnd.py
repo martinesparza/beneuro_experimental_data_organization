@@ -49,8 +49,23 @@ def update_bnd(print_new_commits: bool = False):
 
     if len(new_commits) > 0:
         print("New commits found, pulling changes...")
+        print(3 * "\n")
+
+        # pull changes from origin/main
         _run_git_command(package_path, ["pull", "origin", "main"])
+
+        print(
+            "NOTE: If the install hangs, running the following then retrying might help:",
+            end="\t",
+        )
+        print("export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring")
+
+        # install the updated package
+        subprocess.run(["poetry", "install"], cwd=package_path)
+
+        print(3 * "\n")
         print("Package updated successfully.")
+        print("\n")
 
         if print_new_commits:
             print("New commits:")
