@@ -13,7 +13,7 @@ from beneuro_data.query_sessions import (
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.data_transfer import upload_raw_session
 from beneuro_data.video_renaming import rename_raw_videos_of_session
-from beneuro_data.config import _get_env_path, _load_config
+from beneuro_data.config import _get_env_path, _load_config, _get_package_path
 from beneuro_data.update_bnd import update_bnd, check_for_updates
 from beneuro_data.extra_file_handling import rename_extra_files_in_session
 
@@ -592,6 +592,7 @@ def show_config():
     Show the contents of the config file.
     """
     config = _load_config()
+    print(f"bnd source code is at {_get_package_path()}", end="\n\n")
     print(config.json(indent=4))
 
 

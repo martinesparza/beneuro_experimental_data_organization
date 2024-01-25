@@ -2,8 +2,13 @@ from pydantic import BaseSettings
 from pathlib import Path
 
 
+def _get_package_path():
+    """Returns the path to the package directory."""
+    return Path(__file__).absolute().parent.parent.parent
+
+
 def _get_env_path():
-    package_path = Path(__file__).absolute().parent.parent.parent
+    package_path = _get_package_path()
     return package_path / ".env"
 
 
