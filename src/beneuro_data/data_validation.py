@@ -181,14 +181,7 @@ def validate_raw_behavioral_data_of_session(
     return behavioral_data_files
 
 
-def validate_raw_ephys_data_of_session(
-    session_path: Path,
-    subject_name: str,
-    allowed_extensions_not_in_root: tuple[str, ...],
-) -> list[Path]:
-    # validate that the session's path and folder name are in the expected format
-    validate_session_path(session_path, subject_name)
-
+def _find_spikeglx_recording_folders_in_session(session_path: Path) -> list[Path]:
     # list the folders that look like recordings -> end with _gx
     spikeglx_recording_folder_pathlib_pattern = "*_g?"
     recording_folder_paths = list(
@@ -199,6 +192,19 @@ def validate_raw_ephys_data_of_session(
     # warn if there are more
     if len(recording_folder_paths) > 1:
         warnings.warn(f"More than one raw ephys recordings found in {session_path}.")
+
+    return recording_folder_paths
+
+
+def validate_raw_ephys_data_of_session(
+    session_path: Path,
+    subject_name: str,
+    allowed_extensions_not_in_root: tuple[str, ...],
+) -> list[Path]:
+    # validate that the session's path and folder name are in the expected format
+    validate_session_path(session_path, subject_name)
+
+    recording_folder_paths = _find_spikeglx_recording_folders_in_session(session_path)
 
     # validate the structure in the recording folders that we found
     for recording_path in recording_folder_paths:

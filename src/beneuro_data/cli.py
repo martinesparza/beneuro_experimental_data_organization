@@ -1,4 +1,6 @@
+from typing import Optional, List
 from pathlib import Path
+
 from typing_extensions import Annotated
 import datetime
 
@@ -16,9 +18,91 @@ from beneuro_data.video_renaming import rename_raw_videos_of_session
 from beneuro_data.config import _get_env_path, _load_config, _get_package_path
 from beneuro_data.update_bnd import update_bnd, check_for_updates
 from beneuro_data.extra_file_handling import rename_extra_files_in_session
-
+from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
 
 app = typer.Typer()
+
+
+@app.command()
+def kilosort_session(
+    local_session_path: Annotated[
+        Path, typer.Argument(help="Path to session directory. Can be relative or absolute")
+    ],
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
+    ],
+    probes: Annotated[
+        Optional[List[str]],
+        typer.Argument(
+            help="List of probes to process. If nothing is given, all probes are processed."
+        ),
+    ] = None,
+    clean_up_temp_files: Annotated[
+        bool,
+        typer.Option(
+            "--clean-up-temp-files/--keep-temp-files",
+            help="Keep the binary files created or not. They are huge, but needed for running Phy later.",
+        ),
+    ] = True,
+    verbose: Annotated[
+        bool, typer.Option(help="Print info about what is being run.")
+    ] = True,
+):
+    """
+    Run KiloSort 3 on a session and save the results in the processed folder.
+
+    \b
+    Basic usage:
+        `bnd kilosort-session . M020`
+
+    \b
+    Only sorting specific probes:
+        `bnd kilosort-session . M020 imec0`
+        `bnd kilosort-session . M020 imec0 imec1`
+
+    \b
+    Keeping binary files useful for Phy:
+        `bnd kilosort-session . M020 --keep-temp-files`
+
+    \b
+    Suppressing output:
+        `bnd kilosort-session . M020 --no-verbose`
+    """
+    config = _load_config()
+
+    if not local_session_path.absolute().is_dir():
+        raise ValueError("Session path must be a directory.")
+    if not local_session_path.absolute().exists():
+        raise ValueError("Session path does not exist.")
+    if not local_session_path.absolute().is_relative_to(config.LOCAL_PATH):
+        raise ValueError("Session path must be inside the local root folder.")
+
+    if len(probes) != 0:
+        if len(set(probes)) != len(probes):
+            raise ValueError(f"Duplicate probe names found in {probes}.")
+        # append .ap to each probe name
+        stream_names_to_process = [f"{probe}.ap" for probe in probes]
+        # check that they are all in the session folder somewhere
+        for stream_name in stream_names_to_process:
+            if len(list(local_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
+                raise ValueError(
+                    f"No file found for {stream_name} in {local_session_path.absolute()}"
+                )
+    else:
+        stream_names_to_process = None
+
+    run_kilosort_on_session_and_save_in_processed(
+        local_session_path.absolute(),
+        subject_name,
+        config.LOCAL_PATH,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
+        stream_names_to_process=stream_names_to_process,
+        clean_up_temp_files=clean_up_temp_files,
+        verbose=verbose,
+    )
 
 
 @app.command()
