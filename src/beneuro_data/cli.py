@@ -1,24 +1,22 @@
-from typing import Optional, List
-from pathlib import Path
-
-from typing_extensions import Annotated
 import datetime
+from pathlib import Path
+from typing import List, Optional
 
 import typer
 from rich import print
+from typing_extensions import Annotated
 
+from beneuro_data.config import _get_env_path, _get_package_path, _load_config
+from beneuro_data.data_transfer import upload_raw_session
+from beneuro_data.data_validation import validate_raw_session
+from beneuro_data.extra_file_handling import rename_extra_files_in_session
 from beneuro_data.query_sessions import (
     get_last_session_path,
-    list_subject_sessions_on_day,
     list_all_sessions_on_day,
+    list_subject_sessions_on_day,
 )
-from beneuro_data.data_validation import validate_raw_session
-from beneuro_data.data_transfer import upload_raw_session
+from beneuro_data.update_bnd import check_for_updates, update_bnd
 from beneuro_data.video_renaming import rename_raw_videos_of_session
-from beneuro_data.config import _get_env_path, _load_config, _get_package_path
-from beneuro_data.update_bnd import update_bnd, check_for_updates
-from beneuro_data.extra_file_handling import rename_extra_files_in_session
-from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
 
 app = typer.Typer()
 
@@ -54,6 +52,8 @@ def kilosort_session(
     """
     Run KiloSort 3 on a session and save the results in the processed folder.
 
+    Note that you will need some extra dependencies that are not installed by default. You can install them by running `poetry install --with processing` in bnd's root folder.
+
     \b
     Basic usage:
         `bnd kilosort-session . M020`
@@ -71,6 +71,9 @@ def kilosort_session(
     Suppressing output:
         `bnd kilosort-session . M020 --no-verbose`
     """
+    # this will throw an error if the dependencies are not available
+    from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
+
     config = _load_config()
 
     if not local_session_path.absolute().is_dir():

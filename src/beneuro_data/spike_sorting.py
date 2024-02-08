@@ -3,9 +3,14 @@ import logging
 from pathlib import Path
 from typing import Optional
 
-import spikeinterface.extractors as se
-import spikeinterface.sorters as ss
-import spikeinterface.preprocessing as sip
+try:
+    import spikeinterface.extractors as se
+    import spikeinterface.sorters as ss
+    import spikeinterface.preprocessing as sip
+except ImportError as e:
+    raise ImportError(
+        "Could not import spike sorting functionality. You might want to reinstall bnd with `poetry install --with processing`"
+    ) from e
 
 from beneuro_data.data_validation import validate_raw_ephys_data_of_session
 
