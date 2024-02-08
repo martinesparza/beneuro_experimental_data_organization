@@ -321,23 +321,28 @@ def upload_session(
             help="Name of the subject the session belongs to. (Used for confirmation.)"
         ),
     ],
-    processing_level: Annotated[
-        str, typer.Argument(help="Processing level of the session. raw or processed.")
-    ] = "raw",
     include_behavior: Annotated[
         bool,
         typer.Option(
-            "--include-behavior/--ignore-behavior", help="Upload behavioral data or not."
+            "--include-behavior/--ignore-behavior",
+            help="Upload behavioral data or not.",
+            prompt=True,
         ),
-    ] = True,
+    ],
     include_ephys: Annotated[
         bool,
-        typer.Option("--include-ephys/--ignore-ephys", help="Upload ephys data or not."),
-    ] = True,
+        typer.Option(
+            "--include-ephys/--ignore-ephys", help="Upload ephys data or not.", prompt=True
+        ),
+    ],
     include_videos: Annotated[
         bool,
-        typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
-    ] = True,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            help="Upload video data or not.",
+            prompt=True,
+        ),
+    ],
     include_extra_files: Annotated[
         bool,
         typer.Option(
@@ -359,6 +364,9 @@ def upload_session(
             help="Rename extra files (e.g. comment.txt) before validating and uploading.",
         ),
     ] = True,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
 ):
     """
     Upload (raw) experimental data in a given session to the remote server.
@@ -370,7 +378,7 @@ def upload_session(
         raise NotImplementedError("Sorry, only raw data is supported for now.")
 
     if all([not include_behavior, not include_ephys, not include_videos]):
-        raise ValueError("At least one data type must be checked.")
+        raise ValueError("At least one data type must be included.")
 
     # if videos are included, rename them first if not specified otherwise
     if rename_videos_first is None:
@@ -407,23 +415,27 @@ def upload_last(
         str,
         typer.Argument(help="Name of the subject the session belongs to."),
     ],
-    processing_level: Annotated[
-        str, typer.Argument(help="Processing level of the session. raw or processed.")
-    ] = "raw",
     include_behavior: Annotated[
         bool,
         typer.Option(
-            "--include-behavior/--ignore-behavior", help="Upload behavioral data or not."
+            "--include-behavior/--ignore-behavior",
+            help="Upload behavioral data or not.",
         ),
-    ] = True,
+    ] = None,
     include_ephys: Annotated[
         bool,
-        typer.Option("--include-ephys/--ignore-ephys", help="Upload ephys data or not."),
-    ] = True,
+        typer.Option(
+            "--include-ephys/--ignore-ephys",
+            help="Upload ephys data or not.",
+        ),
+    ] = None,
     include_videos: Annotated[
         bool,
-        typer.Option("--include-videos/--ignore-videos", help="Upload videos data or not."),
-    ] = True,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            help="Upload video data or not.",
+        ),
+    ] = None,
     include_extra_files: Annotated[
         bool,
         typer.Option(
@@ -445,6 +457,9 @@ def upload_last(
             help="Rename extra files (e.g. comment.txt) before validating and uploading.",
         ),
     ] = True,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
 ):
     """
     Upload (raw) experimental data in the last session of a subject to the remote server.
@@ -455,8 +470,30 @@ def upload_last(
     if processing_level != "raw":
         raise NotImplementedError("Sorry, only raw data is supported for now.")
 
+    config = _load_config()
+
+    subject_path = config.LOCAL_PATH / processing_level / subject_name
+
+    # first get the last valid session
+    # and ask the user if this is really the session they want to upload
+    last_session_path = get_last_session_path(subject_path, subject_name).absolute()
+
+    typer.confirm(
+        f"{last_session_path.name} is the last session for {subject_name}. Upload?",
+        abort=True,
+    )
+
+    # then ask the user if they want to include behavior, ephys, and videos
+    # only ask the ones that are not specified as a CLI option
+    if include_behavior is None:
+        include_behavior = typer.confirm("Include behavior?")
+    if include_ephys is None:
+        include_ephys = typer.confirm("Include ephys?")
+    if include_videos is None:
+        include_videos = typer.confirm("Include videos?")
+
     if all([not include_behavior, not include_ephys, not include_videos]):
-        raise ValueError("At least one data type must be checked.")
+        raise ValueError("At least one data type must be included.")
 
     # if videos are included, rename them first if not specified otherwise
     if rename_videos_first is None:
@@ -466,19 +503,6 @@ def upload_last(
         raise ValueError(
             "Do not rename videos if you're not uploading them. (Meaning --ignore-videos and --rename-videos are not allowed together.)"
         )
-
-    config = _load_config()
-
-    subject_path = config.LOCAL_PATH / processing_level / subject_name
-
-    # get the last valid session
-    last_session_path = get_last_session_path(subject_path, subject_name).absolute()
-
-    # ask the user if this is really the session they want to upload
-    typer.confirm(
-        f"{last_session_path.name} is the last session for {subject_name}. Upload?",
-        abort=True,
-    )
 
     upload_raw_session(
         last_session_path,
