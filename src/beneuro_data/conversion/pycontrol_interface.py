@@ -4,24 +4,16 @@
 # then I can specify what it expects to get from each experiment
 
 import warnings
-import dateutil.tz
 from pathlib import Path
 
+import dateutil.tz
 import numpy as np
-
-from pynwb import NWBFile
-from pynwb.file import Subject
-from pynwb.epoch import TimeIntervals
-from pynwb.behavior import (
-    BehavioralEvents,
-    Position,
-    SpatialSeries,
-)
-
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-
-from neuroconv.utils import DeepDict
-from neuroconv.utils import FilePathType
+from neuroconv.utils import DeepDict, FilePathType
+from pynwb import NWBFile
+from pynwb.behavior import BehavioralEvents, Position, SpatialSeries
+from pynwb.epoch import TimeIntervals
+from pynwb.file import Subject
 
 from .pycontrol_data_import import Session
 
@@ -81,7 +73,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
             description="(x,y) position as measured by PyControl",
             data=pos_data,
             timestamps=self.get_timestamps(),
-            reference_frame="(0,0) is what?",
+            reference_frame="(0,0) is what?",  # TODO
         )
 
         self._add_to_behavior_module(Position(spatial_series=spatial_series_obj), nwbfile)
@@ -116,7 +108,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
     def add_behavioral_states(self, nwbfile: NWBFile) -> None:
         behavioral_states = TimeIntervals(
             name="behavioral_states",
-            description="intervals with when each PyControl state was active",
+            description="intervals when each PyControl state was active",
         )
 
         behavioral_states.add_column(
@@ -158,6 +150,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
     def add_subject(self, nwbfile: NWBFile) -> None:
         assert nwbfile.subject is None
 
+        # TODO
         nwbfile.subject = Subject(
             subject_id=str(self.session.subject_ID),
             age="age??",
@@ -189,7 +182,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
         # TODO These should go into the NWBConverter
         metadata["NWBFile"].deep_update(
             experimenter=[
-                "Baggins, Bilbo",
+                "Baggins, Bilbo",  # TODO
             ],
             lab="Be.Neuro Lab",
             institution="Imperial College London",
