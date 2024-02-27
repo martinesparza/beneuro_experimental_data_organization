@@ -1,13 +1,19 @@
-from pydantic import BaseSettings
 from pathlib import Path
 
+from pydantic import BaseSettings
 
-def _get_package_path():
-    """Returns the path to the package directory."""
+
+def _get_package_path() -> Path:
+    """
+    Returns the path to the package directory.
+    """
     return Path(__file__).absolute().parent.parent.parent
 
 
-def _get_env_path():
+def _get_env_path() -> Path:
+    """
+    Returns the path to the .env file containing the configuration settings.
+    """
     package_path = _get_package_path()
     return package_path / ".env"
 
@@ -28,7 +34,10 @@ class Config(BaseSettings):
         env_file = _get_env_path()
 
 
-def _load_config():
+def _load_config() -> Config:
+    """
+    Loads the configuration settings from the .env file and returns it as a Config object.
+    """
     if not _get_env_path().exists():
         raise FileNotFoundError("Config file not found. Run `bnd init` to create one.")
 

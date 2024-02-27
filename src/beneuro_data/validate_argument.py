@@ -2,6 +2,19 @@ import inspect
 
 
 def validate_argument(arg_name, valid_values):
+    """
+    Decorator to validate that the value of a function argument is in the list of valid options.
+
+    Raises a ValueError if the value is not in the valid set.
+
+    Parameters
+    ----------
+    arg_name : str
+        The name of the argument to validate.
+    valid_values : list
+        List of valid values for the argument.
+    """
+
     def decorator(func):
         from functools import wraps
 

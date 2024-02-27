@@ -24,6 +24,34 @@ def validate_raw_session(
     whitelisted_files_in_root: tuple[str, ...],
     allowed_extensions_not_in_root: tuple[str, ...],
 ):
+    """
+    Validate the files of a raw session.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session.
+    subject_name : str
+        Name of the subject. (Needed for validation.)
+    include_behavior : bool
+        Whether to upload the behavioral data.
+    include_ephys : bool
+        Whether to upload the ephys data.
+    include_videos : bool
+        Whether to upload the video data.
+    whitelisted_files_in_root : tuple[str, ...]
+        A tuple of filenames that are allowed in the root of the session directory.
+    allowed_extensions_not_in_root : tuple[str, ...]
+        A tuple of file extensions that are allowed in the session directory excluding the root level.
+        E.g. (".txt", )
+        For what's allowed in the root, use `whitelisted_files_in_root`.
+
+    Returns
+    -------
+    A tuple of the files and folders that are found and validated:
+    (behavior_files, ephys_folder_paths, video_folder_path)
+    """
+    # have to rename first so that validation passes
     behavior_files = []
     ephys_folder_paths = []
     video_folder_path = None
@@ -43,6 +71,11 @@ def validate_raw_session(
 
 
 def validate_date_format(extracted_date_str: str) -> bool:
+    """
+    Validate that the date extracted from a session name is in the expected format.
+
+    Returns True if the date string is in the expected format, raises ValueError otherwise.
+    """
     # parsing the string to datetime, then generating the correctly formatted string to compare to
     try:
         correct_str = datetime.strptime(extracted_date_str, EXPECTED_DATE_FORMAT).strftime(
@@ -61,7 +94,22 @@ def validate_date_format(extracted_date_str: str) -> bool:
     return True
 
 
-def validate_session_path(session_path: Path, subject_name: str):
+def validate_session_path(session_path: Path, subject_name: str) -> bool:
+    """
+    Validate that the session's folder exists and the folder name is in the expected format
+    of <subject_name>_<date> where date's format also matches the expected format.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session.
+    subject_name : str
+        Name of the subject. (Needed for validation.)
+
+    Returns
+    -------
+    True if valid, raises an error otherwise.
+    """
     # 1. has to start with the subject's name
     # 2. has to have an underscore after the subject's name
     # 3. has to end with a date in the correct format
@@ -95,6 +143,26 @@ def validate_raw_behavioral_data_of_session(
     whitelisted_files_in_root: tuple[str, ...],
     warn_if_no_pycontrol_py_folder: bool = True,
 ) -> list[Path]:
+    """
+    Validate behavioral data of a raw session.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session on the local computer.
+    subject_name : str
+        Name of the subject. (Needed for validation.)
+    whitelisted_files_in_root : tuple[str, ...]
+        A tuple of filenames that are allowed in the root of the session directory.
+    warn_if_no_pycontrol_py_folder : bool, default: True
+        Whether to warn if the folder containing the PyControl .py task file is not found.
+
+    Returns
+    -------
+    Returns a list of the files that are found and validated.
+    Raises an error if something is not as expected.
+    """
+    # have to rename first so that validation passes
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
@@ -104,7 +172,7 @@ def validate_raw_behavioral_data_of_session(
     # look for files that match the patterns that pycontrol files should have
     # validate their number
     pycontrol_ending_pattern_per_extension = {
-        ".pca": rf"_MotSen\d-(X|Y)\.pca",
+        ".pca": r"_MotSen\d-(X|Y)\.pca",
         ".txt": r"\.txt",
     }
 
@@ -182,6 +250,21 @@ def validate_raw_behavioral_data_of_session(
 
 
 def _find_spikeglx_recording_folders_in_session(session_path: Path) -> list[Path]:
+    """
+    Find the SpikeGLX recording folders in a session.
+    These are the folders that end with _gx where x is an integer.
+    Ideally there is only one recording in a session, so warn if there are multiple.
+    Used by `validate_raw_ephys_data_of_session`.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session.
+
+    Returns
+    -------
+    List of paths to the recording folders.
+    """
     # list the folders that look like recordings -> end with _gx
     spikeglx_recording_folder_pathlib_pattern = "*_g?"
     recording_folder_paths = list(
@@ -201,6 +284,24 @@ def validate_raw_ephys_data_of_session(
     subject_name: str,
     allowed_extensions_not_in_root: tuple[str, ...],
 ) -> list[Path]:
+    """
+    Validate electrophysiology data of a raw session.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session.
+    subject_name : str
+        Name of the subject. (Needed for validation.)
+    allowed_extensions_not_in_root : tuple[str, ...]
+        A tuple of file extensions that are allowed in the session directory excluding the root level.
+        E.g. (".txt", )
+        For what's allowed in the root, use `whitelisted_files_in_root`.
+
+    Returns
+    -------
+    List of paths to the recording folders.
+    """
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
@@ -226,8 +327,27 @@ def validate_raw_ephys_data_of_session(
 
 
 def validate_raw_ephys_recording(
-    gid_folder_path: Path, allowed_extensions_not_in_root: tuple[str, ...]
-):
+    gid_folder_path: Path,
+    allowed_extensions_not_in_root: tuple[str, ...],
+) -> bool:
+    """
+    Validate a single electrophysiology recording, making sure that subfolders and files
+    have their names in the expected format.
+
+    Parameters
+    ----------
+    gid_folder_path : Path
+        Path to the recording.
+    allowed_extensions_not_in_root : tuple[str, ...]
+        A tuple of file extensions that are allowed in the session directory excluding the root level.
+        E.g. (".txt", )
+        For what's allowed in the root, use `whitelisted_files_in_root`.
+
+    Returns
+    -------
+    A tuple of the files and folders that are found and validated:
+    (behavior_files, ephys_folder_paths, video_folder_path)
+    """
     # extract gx part
     gid = extract_gid(gid_folder_path.name)
 
@@ -281,7 +401,12 @@ def validate_raw_ephys_recording(
     return True
 
 
-def extract_gid(folder_name: str):
+def extract_gid(folder_name: str) -> str:
+    """
+    Extract the recording ID from the folder name, which is the gx part where x is an integer.
+
+    Example: M016_2023_08_15_16_00_g1 -> g1
+    """
     # TODO can there be multiple numbers after the _g?
     # SPIKEGLX_RECORDING_PATTERN = r"_g(\d+)$"
     SPIKEGLX_RECORDING_PATTERN = r"_g(\d)$"
@@ -299,6 +424,25 @@ def validate_raw_videos_of_session(
     subject_name: str,
     warn_if_no_video_folder: bool = True,
 ) -> Optional[Path]:
+    """
+    Validate that the videos are in a folder that has the expected name, and that the files
+    have the expected name as well.
+    Raises an error if something is not as expected, e.g. if there are some video files or
+    a metadata.csv but in the wrong place.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session.
+    subject_name : str
+        Name of the subject. (Needed for validation.)
+    warn_if_no_video_folder : bool, default: True
+        Whether to warn if the video folder is not found.
+
+    Returns
+    -------
+    Path to the video folder if it exists, None otherwise.
+    """
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
 
@@ -312,10 +456,10 @@ def validate_raw_videos_of_session(
     expected_video_filename_start = rf"{session_name}_camera_"
 
     if not video_folder_path.exists():
+        video_folder_exists = False
+
         if warn_if_no_video_folder:
             warnings.warn(f"No correctly named video folder found in {session_path}")
-
-        video_folder_exists = False
     else:
         video_folder_exists = True
 

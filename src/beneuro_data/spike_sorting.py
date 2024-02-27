@@ -1,12 +1,11 @@
-import os
 import logging
 from pathlib import Path
 from typing import Optional
 
 try:
     import spikeinterface.extractors as se
-    import spikeinterface.sorters as ss
     import spikeinterface.preprocessing as sip
+    import spikeinterface.sorters as ss
 except ImportError as e:
     raise ImportError(
         "Could not import spike sorting functionality. You might want to reinstall bnd with `poetry install --with processing`"
@@ -35,6 +34,12 @@ def run_kilosort_on_stream(
         Each probe has its own stream.
     output_path: pathlib.Path
         The path to the output folder where the kilosort results will be saved.
+    clean_up_temp_files: bool
+        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+    verbose: bool
+        Run KiloSort in verbose mode.
+    sorter_params: Optional[dict]
+        Optional parameters to pass to the sorter.
 
     Returns
     -------
@@ -119,7 +124,10 @@ def preprocess_recording(
     return rec4
 
 
-def get_ap_stream_names(recording_path: Path):
+def get_ap_stream_names(recording_path: Path) -> list[str]:
+    """
+    Get the names of the AP streams (e.g. "imec0.ap") in a SpikeGLX recording.
+    """
     all_stream_names, _ = se.get_neo_streams("spikeglx", str(recording_path))
     return [stream_name for stream_name in all_stream_names if stream_name.endswith("ap")]
 
@@ -130,7 +138,29 @@ def run_kilosort_on_recording_and_save_in_processed(
     stream_names_to_process: Optional[tuple[str, ...]] = None,
     clean_up_temp_files: bool = False,
     verbose: bool = False,
-):
+) -> None:
+    """
+    Run Kilosort on a SpikeGLX recording and save the results in the processed folder.
+
+    Parameters
+    ----------
+    raw_recording_path: Path
+        The path to the folder containing the raw SpikeGLX data.
+    base_path: Path
+        The path to the base of the data storage (the folder containing the "raw" and
+        "processed" folders).
+    stream_names_to_process: Optional[tuple[str, ...]]
+        A tuple of stream names to process.
+        If None, all available AP streams will be processed.
+    clean_up_temp_files: bool
+        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+    verbose: bool
+        Run KiloSort in verbose mode.
+
+    Returns
+    -------
+    None, but the results are saved in the processed folder.
+    """
     if isinstance(raw_recording_path, str):
         raw_recording_path = Path(raw_recording_path)
     if isinstance(base_path, str):
@@ -189,7 +219,34 @@ def run_kilosort_on_session_and_save_in_processed(
     stream_names_to_process: Optional[tuple[str, ...]] = None,
     clean_up_temp_files: bool = False,
     verbose: bool = False,
-):
+) -> None:
+    """
+    Run Kilosort on all recordings within a session and save the results in the processed folder.
+
+    Parameters
+    ----------
+    raw_session_path: Path
+        The path to the session's raw data.
+    subject_name: str
+        The name of the experimental subject. (Used for validation.)
+    base_path: Path
+        The path to the base of the data storage (the folder containing the "raw" and
+        "processed" folders).
+    allowed_extensions_not_in_root : tuple[str, ...]
+        A tuple of file extensions that are allowed in the session directory excluding the root level.
+        E.g. (".txt", )
+    stream_names_to_process: Optional[tuple[str, ...]]
+        A tuple of stream names to process.
+        If None, all available AP streams will be processed.
+    clean_up_temp_files: bool
+        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+    verbose: bool
+        Run KiloSort in verbose mode.
+
+    Returns
+    -------
+    None, but the results are saved in the processed folder.
+    """
     if isinstance(raw_session_path, str):
         raw_session_path = Path(raw_session_path)
 
