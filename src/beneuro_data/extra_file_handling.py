@@ -54,6 +54,32 @@ def _find_extra_files_with_extension(session_path: Path, extension: str) -> list
     return [p for p in session_path.glob(f"**/*{extension}") if p.parent != session_path]
 
 
+def _find_extra_files_with_extensions(
+    session_path: Path, extensions: tuple[str, ...]
+) -> list[Path]:
+    """
+    Find files with all the given extensions anywhere in the session folder but the root.
+
+    Parameters
+    ----------
+    session_path : Path
+        Path to the session folder.
+    extensions : tuple[str, ...]
+        The list of extensions to look for.
+
+    Returns
+    -------
+    List of paths to the files found.
+    """
+    extra_files_with_allowed_extensions = []
+    for extension in extensions:
+        extra_files_with_allowed_extensions.extend(
+            _find_extra_files_with_extension(session_path, extension)
+        )
+
+    return extra_files_with_allowed_extensions
+
+
 def _rename_files_to_start_with_session_name(
     session_path: Path,
     files_to_rename: list[Path],
