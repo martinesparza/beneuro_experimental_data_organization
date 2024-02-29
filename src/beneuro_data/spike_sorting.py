@@ -11,7 +11,10 @@ except ImportError as e:
         "Could not import spike sorting functionality. You might want to reinstall bnd with `poetry install --with processing`"
     ) from e
 
-from beneuro_data.data_validation import validate_raw_ephys_data_of_session
+from beneuro_data.data_validation import (
+    validate_raw_ephys_data_of_session,
+    _find_spikeglx_recording_folders_in_session,
+)
 
 
 def run_kilosort_on_stream(
@@ -76,54 +79,6 @@ def run_kilosort_on_stream(
     return sorting_KS3
 
 
-def preprocess_recording(
-    recording: se.BaseRecording,
-    verbose: bool = True,
-):
-    """
-    Preprocess a recording before spike sorting.
-    Based on https://spikeinterface.readthedocs.io/en/latest/how_to/analyse_neuropixels.html#preprocess-the-recording
-
-
-    Parameters
-    ----------
-    recording: BaseRecording
-        The recording to preprocess.
-        E.g. SpikeGLX recording you got by calling `si.read_spikeglx()`.
-    verbose: bool
-        Whether to print logging messages.
-
-    Returns
-    -------
-    recording: BaseRecording
-        The preprocessed recording.
-
-    Examples
-    --------
-    >>> recording = si.read_spikeglx(spikeglx_dir, stream_name = 'imec0.ap')
-    >>> preprocessed_recording = preprocess_recording(recording)
-
-    Extra notes
-    -----------
-    - Description of spikeinterface's preprocessing module: https://spikeinterface.readthedocs.io/en/latest/modules/preprocessing.html
-    - All possible preprocessing steps: https://spikeinterface.readthedocs.io/en/latest/api.html#module-spikeinterface.preprocessing
-    - Alternative common preprocessing pipelines we can implement: https://spikeinterface.readthedocs.io/en/latest/modules/preprocessing.html#how-to-implement-ibl-destriping-or-spikeglx-catgt-in-spikeinterface
-    """
-    rec1 = sip.highpass_filter(recording, freq_min=400.0)
-
-    bad_channel_ids, channel_labels = sip.detect_bad_channels(rec1)
-    if verbose:
-        logging.warning(f"bad_channel_ids: {bad_channel_ids}")
-
-    rec2 = rec1.remove_channels(bad_channel_ids)
-
-    rec3 = sip.phase_shift(rec2)
-
-    rec4 = sip.common_reference(rec3, operator="median", reference="global")
-
-    return rec4
-
-
 def get_ap_stream_names(recording_path: Path) -> list[str]:
     """
     Get the names of the AP streams (e.g. "imec0.ap") in a SpikeGLX recording.
@@ -135,7 +90,7 @@ def get_ap_stream_names(recording_path: Path) -> list[str]:
 def run_kilosort_on_recording_and_save_in_processed(
     raw_recording_path: Path,
     base_path: Path,
-    stream_names_to_process: Optional[tuple[str, ...]] = None,
+    stream_names_to_process: Optional[list[str]] = None,
     clean_up_temp_files: bool = False,
     verbose: bool = False,
 ) -> None:
@@ -184,15 +139,19 @@ def run_kilosort_on_recording_and_save_in_processed(
         processed_session_path / f"{session_folder_name}_ephys" / recording_folder_name
     )
 
+    # if they are not explicitly given, figure out the AP streams ~ probes, e.g. imec0.ap
     if stream_names_to_process is None:
         stream_names_to_process = get_ap_stream_names(raw_recording_path)
 
+    # make sure that the recording contains those streams
+    # can catch typos or missing probes when stream names are explicitly given
     for stream_name in stream_names_to_process:
         if stream_name not in get_ap_stream_names(raw_recording_path):
             raise ValueError(
                 f"Probe {stream_name} is not in recording's AP streams. Found {get_ap_stream_names(raw_recording_path)}"
             )
 
+    # run kilosort for all probes in the recording
     for ap_stream_name in stream_names_to_process:
         probe_name = ap_stream_name.split(".")[0]
 
@@ -216,7 +175,7 @@ def run_kilosort_on_session_and_save_in_processed(
     subject_name: str,
     base_path: Path,
     allowed_extensions_not_in_root: tuple[str, ...],
-    stream_names_to_process: Optional[tuple[str, ...]] = None,
+    stream_names_to_process: Optional[list[str]] = None,
     clean_up_temp_files: bool = False,
     verbose: bool = False,
 ) -> None:
@@ -250,9 +209,13 @@ def run_kilosort_on_session_and_save_in_processed(
     if isinstance(raw_session_path, str):
         raw_session_path = Path(raw_session_path)
 
-    ephys_recording_folders = validate_raw_ephys_data_of_session(
+    # validate ephys data before spike sorting
+    _ = validate_raw_ephys_data_of_session(
         raw_session_path, subject_name, allowed_extensions_not_in_root
     )
+
+    # get the actual folders because validate_raw_ephys_data_of_session returns a list of files
+    ephys_recording_folders = _find_spikeglx_recording_folders_in_session(raw_session_path)
 
     for recording_path in ephys_recording_folders:
         if verbose:
@@ -265,3 +228,51 @@ def run_kilosort_on_session_and_save_in_processed(
             clean_up_temp_files,
             verbose,
         )
+
+
+def preprocess_recording(
+    recording: se.BaseRecording,
+    verbose: bool = True,
+):
+    """
+    Preprocess a recording before spike sorting.
+    Based on https://spikeinterface.readthedocs.io/en/latest/how_to/analyse_neuropixels.html#preprocess-the-recording
+
+
+    Parameters
+    ----------
+    recording: BaseRecording
+        The recording to preprocess.
+        E.g. SpikeGLX recording you got by calling `si.read_spikeglx()`.
+    verbose: bool
+        Whether to print logging messages.
+
+    Returns
+    -------
+    recording: BaseRecording
+        The preprocessed recording.
+
+    Examples
+    --------
+    >>> recording = si.read_spikeglx(spikeglx_dir, stream_name = 'imec0.ap')
+    >>> preprocessed_recording = preprocess_recording(recording)
+
+    Extra notes
+    -----------
+    - Description of spikeinterface's preprocessing module: https://spikeinterface.readthedocs.io/en/latest/modules/preprocessing.html
+    - All possible preprocessing steps: https://spikeinterface.readthedocs.io/en/latest/api.html#module-spikeinterface.preprocessing
+    - Alternative common preprocessing pipelines we can implement: https://spikeinterface.readthedocs.io/en/latest/modules/preprocessing.html#how-to-implement-ibl-destriping-or-spikeglx-catgt-in-spikeinterface
+    """
+    rec1 = sip.highpass_filter(recording, freq_min=400.0)
+
+    bad_channel_ids, channel_labels = sip.detect_bad_channels(rec1)
+    if verbose:
+        logging.warning(f"bad_channel_ids: {bad_channel_ids}")
+
+    rec2 = rec1.remove_channels(bad_channel_ids)
+
+    rec3 = sip.phase_shift(rec2)
+
+    rec4 = sip.common_reference(rec3, operator="median", reference="global")
+
+    return rec4

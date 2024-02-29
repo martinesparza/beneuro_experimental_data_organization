@@ -7,7 +7,7 @@ from rich import print
 from typing_extensions import Annotated
 
 from beneuro_data.config import _get_env_path, _get_package_path, _load_config
-from beneuro_data.data_transfer import upload_raw_session
+from beneuro_data.data_transfer import upload_raw_session, download_raw_session
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.extra_file_handling import rename_extra_files_in_session
 from beneuro_data.query_sessions import (
@@ -19,6 +19,170 @@ from beneuro_data.update_bnd import check_for_updates, update_bnd
 from beneuro_data.video_renaming import rename_raw_videos_of_session
 
 app = typer.Typer()
+
+
+@app.command()
+def download_last(
+    subject_name: Annotated[
+        str,
+        typer.Argument(help="Name of the subject the session belongs to."),
+    ],
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior",
+            help="Download behavioral data or not.",
+        ),
+    ] = None,
+    include_ephys: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephys/--ignore-ephys",
+            help="Download ephys data or not.",
+        ),
+    ] = None,
+    include_videos: Annotated[
+        bool,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            help="Download video data or not.",
+        ),
+    ] = None,
+    # include_extra_files: Annotated[
+    #    bool,
+    #    typer.Option(
+    #        "--include-extra-files/--ignore-extra-files",
+    #        help="Download extra files that are created by the experimenter or other software.",
+    #    ),
+    # ] = True,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+):
+    """
+    Download (raw) experimental data in the last session of a subject from the remote server.
+
+    Example usage:
+        `bnd upload-last M017`
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    config = _load_config()
+
+    subject_path = config.REMOTE_PATH / processing_level / subject_name
+
+    # first get the last valid session
+    # and ask the user if this is really the session they want to upload
+    last_session_path = get_last_session_path(subject_path, subject_name).absolute()
+
+    typer.confirm(
+        f"{last_session_path.name} is the last session for {subject_name}. Download?",
+        abort=True,
+    )
+
+    # then ask the user if they want to include behavior, ephys, and videos
+    # only ask the ones that are not specified as a CLI option
+    if include_behavior is None:
+        include_behavior = typer.confirm("Include behavior?")
+    if include_ephys is None:
+        include_ephys = typer.confirm("Include ephys?")
+    if include_videos is None:
+        include_videos = typer.confirm("Include videos?")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be included.")
+
+    download_raw_session(
+        last_session_path,
+        subject_name,
+        config.LOCAL_PATH,
+        config.REMOTE_PATH,
+        include_behavior,
+        include_ephys,
+        include_videos,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
+    )
+
+    return True
+
+
+@app.command()
+def download_session(
+    remote_session_path: Annotated[
+        Path, typer.Argument(help="Path to session directory. Can be relative or absolute.")
+    ],
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
+    ],
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior",
+            help="Download behavioral data or not.",
+            prompt=True,
+        ),
+    ],
+    include_ephys: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephys/--ignore-ephys",
+            help="Download ephys data or not.",
+            prompt=True,
+        ),
+    ],
+    include_videos: Annotated[
+        bool,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            help="Download video data or not.",
+            prompt=True,
+        ),
+    ],
+    # extra files are always included
+    # TODO do we want this to stay this way?
+    # include_extra_files: Annotated[
+    #    bool,
+    #    typer.Option(
+    #        "--include-extra-files/--ignore-extra-files",
+    #        help="Download extra files that are created by the experimenter or other software.",
+    #    ),
+    # ] = True,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+):
+    """
+    Download (raw) experimental data in a given session from the remote server.
+
+    Example usage after navigating to session folder on RDS:
+        `bnd download-session . M017`
+    """
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be included.")
+
+    config = _load_config()
+
+    download_raw_session(
+        remote_session_path.absolute(),
+        subject_name,
+        config.LOCAL_PATH,
+        config.REMOTE_PATH,
+        include_behavior,
+        include_ephys,
+        include_videos,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
+    )
+
+    return True
 
 
 @app.command()

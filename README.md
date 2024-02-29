@@ -105,4 +105,16 @@ or if you don't want to `cd` into the session's directory:
 
 This should first rename the videos and extra files (unless otherwise specified), validate the data, then copy it to the server, and complain if it's already there.
 
+## Downloading data from the server
+Downloading data to your local computer is similar to uploading, but instead of throwing errors, missing or invalid data is handled by skipping it and warning about it.
+
+Using the session's path, e.g. after navigating to the session's folder on RDS mounted to your computer:
+
+  `bnd download-session . <subject-name>`
+
+or just the last session of a subject:
+
+  `bnd download-last <subject-name>`
+
+
 # Please file an issue if something doesn't work or is just annoying to use!

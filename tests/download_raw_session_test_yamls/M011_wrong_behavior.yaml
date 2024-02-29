@@ -1,0 +1,47 @@
+# .pca files missing
+type: folder
+name: M011
+children:
+- type: folder
+  name: M011_2023_04_04_16_00
+  children:
+  - type: file
+    name: M011_2023_04_04_16_00_comment.txt
+  - type: folder
+    name: M011_2023_04_04_16_00_cameras
+    children:
+    - type: file
+      name: M011_2023_04_04_16_00_camera_1.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_2.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_3.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_4.avi
+    - type: file
+      name: M011_2023_04_04_16_00_camera_5.avi
+    - type: file
+      name: metadata.csv
+  - type: file
+    name: M011_2023_04_04_16_00.txt
+  - type: folder
+    name: M011_2023_04_04_16_00_g1
+    children:
+    - type: file
+      name: .DS_Store
+    - type: folder
+      name: M011_2023_04_04_16_00_g1_imec0
+      children:
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.meta
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.meta
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.lf.bin
+      - type: file
+        name: M011_2023_04_04_16_00_g1_t0.imec0.ap.bin
+  - type: folder
+    name: run_task-task_files
+    children:
+    - type: file
+      name: whatever_task.py

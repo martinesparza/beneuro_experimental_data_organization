@@ -53,21 +53,21 @@ def validate_raw_session(
     """
     # have to rename first so that validation passes
     behavior_files = []
-    ephys_folder_paths = []
-    video_folder_path = None
+    ephys_files = []
+    video_files = []
 
     if include_behavior:
         behavior_files = validate_raw_behavioral_data_of_session(
             session_path, subject_name, whitelisted_files_in_root
         )
     if include_ephys:
-        ephys_folder_paths = validate_raw_ephys_data_of_session(
+        ephys_files = validate_raw_ephys_data_of_session(
             session_path, subject_name, allowed_extensions_not_in_root
         )
     if include_videos:
-        video_folder_path = validate_raw_videos_of_session(session_path, subject_name)
+        video_files = validate_raw_videos_of_session(session_path, subject_name)
 
-    return behavior_files, ephys_folder_paths, video_folder_path
+    return behavior_files, ephys_files, video_files
 
 
 def validate_date_format(extracted_date_str: str) -> bool:
@@ -300,7 +300,7 @@ def validate_raw_ephys_data_of_session(
 
     Returns
     -------
-    List of paths to the recording folders.
+    List of files in the recording folders.
     """
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
@@ -323,7 +323,14 @@ def validate_raw_ephys_data_of_session(
                     f"{spikeglx_filepath} is not in any known recording folders."
                 )
 
-    return recording_folder_paths
+    ephys_files = [
+        p
+        for recording_folder in recording_folder_paths
+        for p in recording_folder.glob("**/*")
+        if p.is_file()
+    ]
+
+    return ephys_files
 
 
 def validate_raw_ephys_recording(
@@ -423,7 +430,7 @@ def validate_raw_videos_of_session(
     session_path: Path,
     subject_name: str,
     warn_if_no_video_folder: bool = True,
-) -> Optional[Path]:
+) -> list[Path]:
     """
     Validate that the videos are in a folder that has the expected name, and that the files
     have the expected name as well.
@@ -441,7 +448,7 @@ def validate_raw_videos_of_session(
 
     Returns
     -------
-    Path to the video folder if it exists, None otherwise.
+    List of files in the video folder if it exists, None otherwise.
     """
     # validate that the session's path and folder name are in the expected format
     validate_session_path(session_path, subject_name)
@@ -503,6 +510,6 @@ def validate_raw_videos_of_session(
             )
 
     if video_folder_exists:
-        return video_folder_path
+        return [p for p in video_folder_path.glob("**/*") if p.is_file()]
 
-    return None
+    return []
