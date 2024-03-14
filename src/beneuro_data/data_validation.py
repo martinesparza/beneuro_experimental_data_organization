@@ -49,7 +49,7 @@ def validate_raw_session(
     Returns
     -------
     A tuple of the files and folders that are found and validated:
-    (behavior_files, ephys_folder_paths, video_folder_path)
+    (behavior_files, ephys_files, video_files)
     """
     # have to rename first so that validation passes
     behavior_files = []

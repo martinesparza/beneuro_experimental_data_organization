@@ -7,7 +7,7 @@ from rich import print
 from typing_extensions import Annotated
 
 from beneuro_data.config import _get_env_path, _get_package_path, _load_config
-from beneuro_data.data_transfer import upload_raw_session, download_raw_session
+from beneuro_data.data_transfer import download_raw_session, upload_raw_session
 from beneuro_data.data_validation import validate_raw_session
 from beneuro_data.extra_file_handling import rename_extra_files_in_session
 from beneuro_data.query_sessions import (
@@ -214,7 +214,7 @@ def kilosort_session(
     ] = True,
 ):
     """
-    Run KiloSort 3 on a session and save the results in the processed folder.
+    Run Kilosort 3 on a session and save the results in the processed folder.
 
     Note that you will need some extra dependencies that are not installed by default. You can install them by running `poetry install --with processing` in bnd's root folder.
 

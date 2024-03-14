@@ -1,17 +1,15 @@
 import warnings
 from pathlib import Path
-
 from typing import Optional
 
-from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
-
+from beneuro_data.conversion.animal_profile_interface import AnimalProfileInterface
 from beneuro_data.conversion.beneuro_converter import BeNeuroConverter
 from beneuro_data.conversion.gpu_memory import get_free_gpu_memory
-
 from beneuro_data.data_validation import (
-    validate_raw_session,
     _find_spikeglx_recording_folders_in_session,
+    validate_raw_session,
 )
+from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
 
 
 def convert_to_nwb(
@@ -39,7 +37,7 @@ def convert_to_nwb(
         raise ValueError(f"{raw_session_path} is not in {base_path / 'raw'}")
 
     # validate session before doing any conversion
-    validate_raw_session(
+    _, ephys_files, _ = validate_raw_session(
         raw_session_path,
         subject_name,
         include_behavior=True,
@@ -48,11 +46,6 @@ def convert_to_nwb(
         whitelisted_files_in_root=whitelisted_files_in_root,
         allowed_extensions_not_in_root=allowed_extensions_not_in_root,
     )
-
-    raw_recording_path = _find_spikeglx_recording_folders_in_session(raw_session_path)[0]
-
-    recording_folder_name = raw_recording_path.name
-    session_folder_name = raw_session_path.name
 
     # determine output path
     raw_base_path = base_path / "raw"
@@ -68,35 +61,46 @@ def convert_to_nwb(
     processed_session_path = processed_base_path / raw_session_path.relative_to(
         raw_base_path
     )
-    processed_recording_ephys_path = (
-        processed_session_path / f"{session_folder_name}_ephys" / recording_folder_name
-    )
-
-    # make the subject's, session's, and ephys folders if they don't exist
-    # this creates all of them
-    if not processed_recording_ephys_path.exists():
-        processed_recording_ephys_path.mkdir(parents=True, exist_ok=False)
+    if not processed_session_path.exists():
+        processed_session_path.mkdir(parents=True, exist_ok=False)
 
     # make sure the NWB file doesn't already exist
-    nwb_file_output_path = processed_session_path / f"{session_folder_name}.nwb"
+    nwb_file_output_path = processed_session_path / f"{raw_session_path.name}.nwb"
     if nwb_file_output_path.exists():
         raise FileExistsError(f"NWB file already exists at {nwb_file_output_path}")
 
-    # see if kilosort has already been run
-    raw_probe_folders = sorted([p.name for p in raw_recording_path.iterdir() if p.is_dir()])
-    processed_probe_folders = sorted(
-        [p.name for p in processed_recording_ephys_path.iterdir() if p.is_dir()]
-    )
-    if (not run_kilosort) and (raw_probe_folders != processed_probe_folders):
-        warnings.warn(
-            "Looks like not all probes have been kilosorted. You might want to do it."
+    for raw_recording_path in _find_spikeglx_recording_folders_in_session(raw_session_path):
+        processed_recording_ephys_path = (
+            processed_session_path
+            / f"{raw_session_path.name}_ephys"
+            / raw_recording_path.name
         )
+
+        # make the subject's, session's, and ephys folders if they don't exist
+        # this creates all of them
+        if not processed_recording_ephys_path.exists():
+            processed_recording_ephys_path.mkdir(parents=True, exist_ok=False)
+
+        # see if kilosort has already been run
+        raw_probe_folders = sorted(
+            [p.name for p in raw_recording_path.iterdir() if p.is_dir()]
+        )
+        processed_probe_folders = sorted(
+            [p.name for p in processed_recording_ephys_path.iterdir() if p.is_dir()]
+        )
+        if (not run_kilosort) and (raw_probe_folders != processed_probe_folders):
+            non_sorted_probe_folders = sorted(
+                list(set(raw_probe_folders).difference(set(processed_probe_folders)))
+            )
+            warnings.warn(
+                f"Looks like not all probes have been kilosorted. You might want to do it.\nNon-sorted folders:\n{non_sorted_probe_folders}"
+            )
 
     if run_kilosort:
         # kilosort needs around 4.5 GB of GPU memory, might fail otherwise
         # so check if we have enough
         if all(free_mem_mb < 4400 for free_mem_mb in get_free_gpu_memory()):
-            warnings.warn("KiloSort might fail because of low GPU memory.")
+            warnings.warn("Kilosort might fail because of low GPU memory.")
 
         run_kilosort_on_session_and_save_in_processed(
             raw_session_path,
@@ -107,20 +111,40 @@ def convert_to_nwb(
             clean_up_temp_files,
         )
 
-    # finally, run the conversion
+    # specify where the data should be read from by the converter
     source_data = dict(
         PyControl={
             "file_path": str(raw_session_path),
         },
-        KiloSort={
+        Kilosort={
             "processed_recording_path": str(processed_session_path),
         },
     )
 
+    # if loading .profile data works, add it to the interfaces
+    try:
+        AnimalProfileInterface(raw_session_path)
+    except Exception as e:
+        warnings.warn(f"Problem loading data from profile: {str(e)}")
+    else:
+        source_data.update(
+            AnimalProfile={
+                "session_path": str(raw_session_path),
+            }
+        )
+
+    # finally, run the conversion
     converter = BeNeuroConverter(source_data)
 
+    metadata = converter.get_metadata()
+
+    metadata["NWBFile"].deep_update(
+        lab="Be.Neuro Lab",
+        institution="Imperial College London",
+    )
+
     converter.run_conversion(
-        metadata=converter.get_metadata(),
+        metadata=metadata,
         nwbfile_path=nwb_file_output_path,
     )
 

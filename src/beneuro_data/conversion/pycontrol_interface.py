@@ -13,7 +13,6 @@ from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 from pynwb.behavior import BehavioralEvents, Position, SpatialSeries
 from pynwb.epoch import TimeIntervals
-from pynwb.file import Subject
 
 from .pycontrol_data_import import Session
 
@@ -72,7 +71,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
             name="Ball position",
             description="(x,y) position as measured by PyControl",
             data=pos_data,
-            timestamps=self.get_timestamps(),
+            timestamps=self.get_timestamps().astype(float),
             reference_frame="(0,0) is what?",  # TODO
         )
 
@@ -86,7 +85,9 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
                 name=print_item,
                 data=[it.value for it in self.session.print_data if it.name == print_item],
                 timestamps=[
-                    it.time for it in self.session.print_data if it.name == print_item
+                    float(it.time)
+                    for it in self.session.print_data
+                    if it.name == print_item
                 ],
                 unit="",
             )
@@ -99,7 +100,7 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
         behavioral_events.create_timeseries(
             name="behavioral events",
             data=[e.name for e in self.session.events],
-            timestamps=[e.time for e in self.session.events],
+            timestamps=[float(e.time) for e in self.session.events],
             unit="",
         )
 
@@ -140,52 +141,28 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
             )
 
             behavioral_states.add_row(
-                start_time=state.time,
-                stop_time=state.time + duration,
+                start_time=float(state.time),
+                stop_time=float(state.time + duration),
                 state_name=state.name,
             )
 
         self._add_to_behavior_module(behavioral_states, nwbfile)
 
-    def add_subject(self, nwbfile: NWBFile) -> None:
-        assert nwbfile.subject is None
-
-        # TODO
-        nwbfile.subject = Subject(
-            subject_id=str(self.session.subject_ID),
-            age="age??",
-            description="??",
-            species="??",
-            sex="F",
-        )
-
     def set_aligned_timestamps(self):
         raise NotImplementedError()
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: DeepDict) -> None:
-        self.add_subject(nwbfile)
         self.add_behavioral_states(nwbfile)
         self.add_behavioral_events(nwbfile)
         self.add_print_events(nwbfile)
         self.add_position(nwbfile)
 
     def get_metadata(self) -> DeepDict:
-        metadata = super().get_metadata()
+        metadata = DeepDict()
 
-        metadata["NWBFile"].deep_update(
-            session_description=self.session.task_name,
-            session_start_time=self.session.datetime.astimezone(
-                dateutil.tz.gettz("Europe/London")
-            ),
-        )
-
-        # TODO These should go into the NWBConverter
-        metadata["NWBFile"].deep_update(
-            experimenter=[
-                "Baggins, Bilbo",  # TODO
-            ],
-            lab="Be.Neuro Lab",
-            institution="Imperial College London",
+        metadata["NWBFile"]["session_description"] = self.session.task_name
+        metadata["NWBFile"]["session_start_time"] = self.session.datetime.astimezone(
+            dateutil.tz.gettz("Europe/London")
         )
 
         return metadata

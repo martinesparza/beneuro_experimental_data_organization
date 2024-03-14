@@ -38,9 +38,9 @@ def run_kilosort_on_stream(
     output_path: pathlib.Path
         The path to the output folder where the kilosort results will be saved.
     clean_up_temp_files: bool
-        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+        Whether to delete temporary .mat and .dat files left by Kilosort after sorting.
     verbose: bool
-        Run KiloSort in verbose mode.
+        Run Kilosort in verbose mode.
     sorter_params: Optional[dict]
         Optional parameters to pass to the sorter.
 
@@ -108,9 +108,9 @@ def run_kilosort_on_recording_and_save_in_processed(
         A tuple of stream names to process.
         If None, all available AP streams will be processed.
     clean_up_temp_files: bool
-        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+        Whether to delete temporary .mat and .dat files left by Kilosort after sorting.
     verbose: bool
-        Run KiloSort in verbose mode.
+        Run Kilosort in verbose mode.
 
     Returns
     -------
@@ -159,7 +159,7 @@ def run_kilosort_on_recording_and_save_in_processed(
         processed_probe_path = processed_recording_ephys_path / probe_folder_name
 
         if verbose:
-            print(f"Running KiloSort for {ap_stream_name}")
+            print(f"Running Kilosort for {ap_stream_name}")
 
         sorting_KS3 = run_kilosort_on_stream(
             input_path=raw_recording_path,
@@ -198,9 +198,9 @@ def run_kilosort_on_session_and_save_in_processed(
         A tuple of stream names to process.
         If None, all available AP streams will be processed.
     clean_up_temp_files: bool
-        Whether to delete temporary .mat and .dat files left by KiloSort after sorting.
+        Whether to delete temporary .mat and .dat files left by Kilosort after sorting.
     verbose: bool
-        Run KiloSort in verbose mode.
+        Run Kilosort in verbose mode.
 
     Returns
     -------

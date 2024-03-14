@@ -1,20 +1,17 @@
 from pathlib import Path
 
 import numpy as np
-
-from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
-
+import spikeinterface.extractors as se
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import (
-    SpikeGLXRecordingInterface,
-    # PhySortingInterface
-)
-from beneuro_data.conversion.pycontrol_interface import PyControlInterface
+from neuroconv.datainterfaces import SpikeGLXRecordingInterface  # PhySortingInterface
+from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
+from neuroconv.utils import DeepDict
+
+from beneuro_data.conversion.animal_profile_interface import AnimalProfileInterface
 from beneuro_data.conversion.multiprobe_kilosort_interface import (
     MultiProbeKiloSortInterface,
 )
-
-import spikeinterface.extractors as se
+from beneuro_data.conversion.pycontrol_interface import PyControlInterface
 
 
 def chunked_first_rise(memmap_array: np.memmap, chunk_size: int = 1_000):
@@ -55,7 +52,7 @@ class BeNeuroConverter(NWBConverter):
         PyControl = {
             "file_path" : str(session_folder_path)
         },
-        KiloSort = {
+        Kilosort = {
             "processed_recording_path" : str(processed_session_path),
         }
     )
@@ -69,21 +66,24 @@ class BeNeuroConverter(NWBConverter):
     ```
     """
 
+    # this contains all possible interfaces
+    # if source_data doesn't have one of them, it won't be used
     data_interface_classes = {
-        "KiloSort": MultiProbeKiloSortInterface,
+        "Kilosort": MultiProbeKiloSortInterface,
         "PyControl": PyControlInterface,
+        "AnimalProfile": AnimalProfileInterface,
         # TODO "Neuropixels" : NeuropixelsInterface -- add probe location and information
     }
 
     def temporally_align_data_interfaces(self):
         # just to make the names shorter
-        multikilo = self.data_interface_objects["KiloSort"]
+        multikilo = self.data_interface_objects["Kilosort"]
 
         raw_session_path = Path(
             self.data_interface_objects["PyControl"].source_data["file_path"]
         )
 
-        for (probe_name, kilosort_interface) in zip(
+        for probe_name, kilosort_interface in zip(
             multikilo.probe_names, multikilo.kilosort_interfaces
         ):
             ap_paths = list(raw_session_path.glob(f"**/*{probe_name}.ap.bin"))
