@@ -20,6 +20,112 @@ app = typer.Typer()
 
 
 @app.command()
+def to_nwb(
+    local_session_path: Annotated[
+        Path,
+        typer.Argument(help="Path to session directory. Can be relative or absolute"),
+    ],
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
+    ],
+    run_kilosort: Annotated[
+        bool,
+        typer.Option("--kilosort/--no-kilosort", help="Run Kilosort 4 or not"),
+    ] = True,
+    sort_probe: Annotated[
+        Optional[List[str]],
+        typer.Option(
+            help="Probes to run Kilosort on. If not given, all probes are processed."
+        ),
+    ] = None,
+    clean_up_temp_files: Annotated[
+        bool,
+        typer.Option(
+            "--clean-up-temp-files/--keep-temp-files",
+            help="Keep the binary files created by Kilosort or not. They are huge, but needed for running Phy later.",
+        ),
+    ] = True,
+    verbose_kilosort: Annotated[
+        bool,
+        typer.Option(help="Run Kilosort in verbose mode."),
+    ] = True,
+):
+    """
+    Convert a session's data to NWB, optionally running Kilosort before.
+
+    Includes:
+
+        - behavioral events and ball position from PyControl
+
+        - session and subject details from the .profile file
+
+        - spikes from Kilosort
+
+        - pose estimation from sleap-anipose
+
+
+
+    Note that you will need some extra dependencies that are not installed by default.
+
+    You can install them by running `poetry install --with processing` in bnd's root folder (which you can with with `bnd show-config`).
+
+
+
+    \b
+    Basic usage:
+        `bnd to-nwb . M027`
+
+    \b
+    Skip running Kilosort:
+        `bnd to-nwb . M027 --no-kilosort`
+
+    \b
+    Running Kilosort on only selected probes:
+        `bnd to-nwb . M027 --sort-probe imec0 --sort-probe imec1`
+    """
+    # this will throw an error if the dependencies are not available
+    from beneuro_data.conversion.convert_to_nwb import convert_to_nwb
+
+    config = _load_config()
+
+    if not local_session_path.absolute().is_dir():
+        raise ValueError("Session path must be a directory.")
+    if not local_session_path.absolute().exists():
+        raise ValueError("Session path does not exist.")
+    if not local_session_path.absolute().is_relative_to(config.LOCAL_PATH):
+        raise ValueError("Session path must be inside the local root folder.")
+
+    if len(sort_probe) != 0:
+        if len(set(sort_probe)) != len(sort_probe):
+            raise ValueError(f"Duplicate probe names found in {sort_probe}.")
+        # append .ap to each probe name
+        stream_names_to_process = [f"{probe}.ap" for probe in sort_probe]
+        # check that they are all in the session folder somewhere
+        for stream_name in stream_names_to_process:
+            if len(list(local_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
+                raise ValueError(
+                    f"No file found for {stream_name} in {local_session_path.absolute()}"
+                )
+    else:
+        stream_names_to_process = None
+
+    convert_to_nwb(
+        local_session_path.absolute(),
+        subject_name,
+        config.LOCAL_PATH,
+        config.WHITELISTED_FILES_IN_ROOT,
+        config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
+        run_kilosort,
+        stream_names_to_process,
+        clean_up_temp_files,
+        verbose_kilosort,
+    )
+
+
+@app.command()
 def download_last(
     subject_name: Annotated[
         str,
