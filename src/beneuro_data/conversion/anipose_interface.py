@@ -137,6 +137,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                 f"Could not find SpikeGLX .ap streams in {self.raw_session_path}"
             )
 
+        print("Setting pose estimation timestamps using pulse signal from SpikeGLX...")
+
         rising_edges_dict = {}
         for stream_name in stream_names:
             rec_with_sync_channel = se.read_spikeglx(
