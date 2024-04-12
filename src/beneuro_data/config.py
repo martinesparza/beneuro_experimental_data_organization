@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import BaseSettings
+from pydantic.v1 import BaseSettings
 
 
 def _get_package_path() -> Path:
