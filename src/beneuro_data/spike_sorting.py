@@ -13,8 +13,7 @@ except ImportError as e:
 
 from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session,
-    validate_raw_ephys_data_of_session,
-)
+    validate_raw_ephys_data_of_session)
 
 
 def run_kilosort_on_stream(
@@ -26,7 +25,7 @@ def run_kilosort_on_stream(
     sorter_params: Optional[dict] = None,
 ):
     """
-    Run Kilosort3 on a SpikeGLX recording.
+    Run Kilosort 4 on a SpikeGLX recording.
 
     Parameters
     ----------
@@ -54,11 +53,10 @@ def run_kilosort_on_stream(
     if sorter_params is None:
         sorter_params = {}
 
-    sorting_KS3 = ss.run_sorter(
-        "kilosort3",
+    sorting_obj = ss.run_sorter(
+        "kilosort4",
         recording,
         output_folder=str(output_path),
-        # docker_image = "spikeinterface/kilosort3-compiled-base:latest",
         docker_image=True,
         verbose=verbose,
         **sorter_params,
@@ -75,7 +73,7 @@ def run_kilosort_on_stream(
         for f in temp_files_to_delete:
             f.unlink()
 
-    return sorting_KS3
+    return sorting_obj
 
 
 def get_ap_stream_names(recording_path: Path) -> list[str]:
@@ -160,7 +158,7 @@ def run_kilosort_on_recording_and_save_in_processed(
         if verbose:
             print(f"Running Kilosort for {ap_stream_name}")
 
-        sorting_KS3 = run_kilosort_on_stream(
+        _ = run_kilosort_on_stream(
             input_path=raw_recording_path,
             stream_name=f"{probe_name}.ap",
             output_path=processed_probe_path,
