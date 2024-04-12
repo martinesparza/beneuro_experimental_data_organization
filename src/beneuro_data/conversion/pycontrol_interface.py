@@ -8,13 +8,14 @@ from pathlib import Path
 
 import dateutil.tz
 import numpy as np
-from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
+from neuroconv.basetemporalalignmentinterface import \
+    BaseTemporalAlignmentInterface
 from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 from pynwb.behavior import BehavioralEvents, Position, SpatialSeries
 from pynwb.epoch import TimeIntervals
 
-from .pycontrol_data_import import Session
+from .pycontrol_data_import import Event, Print, Session, State
 
 
 class PyControlInterface(BaseTemporalAlignmentInterface):
@@ -35,10 +36,50 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
         self.session = sessions[0]
 
     def get_original_timestamps(self) -> np.ndarray:
-        self.reload_session()
-        return self.get_timestamps()
+        raise NotImplementedError
 
     def get_timestamps(self) -> np.ndarray:
+        raise NotImplementedError
+
+    def set_aligned_timestamps(self):
+        raise NotImplementedError
+
+    def get_first_rising_edge_time(self) -> int:
+        """
+        In newer sessions the time of the first trigger is saved in a print event
+        and can be used to adjust times such that this event is at 0.
+        In older sessions this is not saved, so we just assume it's 0.
+        """
+        default_trigger_time = 0
+        t = self.session.times.get("before_camera_trigger", default_trigger_time)
+        try:
+            # see if it's an array
+            len(t)
+        except TypeError:
+            # it's a number, so return it
+            return t
+        else:
+            assert len(t) == 1, "There should be a single 'before_camera_trigger' event"
+            return t[0]
+
+    def adjust_timestamps(self, start_time: int) -> None:
+        self.session.events = [
+            Event(ev.time - start_time, ev.name) for ev in self.session.events
+        ]
+        self.session.states = [
+            State(s.time - start_time, s.name, s.duration) for s in self.session.states
+        ]
+        self.session.print_data = [
+            Print(p.time - start_time, p.name, p.value) for p in self.session.print_data
+        ]
+
+        for k in self.session.times.keys():
+            self.session.times[k] -= start_time
+
+        for k in self.session.analog_data.keys():
+            self.session.analog_data[k][:, 0] -= start_time
+
+    def _get_pos_timestamps(self) -> np.ndarray:
         time_x = self.session.analog_data["MotSen1-X"][:, 0]
         time_y = self.session.analog_data["MotSen1-Y"][:, 0]
 
@@ -46,6 +87,14 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
         assert np.all(time_x == time_y)
 
         return time_x
+
+    def _get_pos_data(self) -> np.ndarray:
+        data_x = self.session.analog_data["MotSen1-X"][:, 1]
+        data_y = self.session.analog_data["MotSen1-Y"][:, 1]
+
+        pos_data = np.stack([data_x, data_y]).T
+
+        return pos_data
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         # behavior_module = nwbfile.processing.get(
@@ -62,16 +111,11 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
         behavior_module.add(beh_obj)
 
     def add_position(self, nwbfile: NWBFile) -> None:
-        data_x = self.session.analog_data["MotSen1-X"][:, 1]
-        data_y = self.session.analog_data["MotSen1-Y"][:, 1]
-
-        pos_data = np.stack([data_x, data_y]).T
-
         spatial_series_obj = SpatialSeries(
             name="Ball position",
             description="(x,y) position as measured by PyControl",
-            data=pos_data,
-            timestamps=self.get_timestamps().astype(float),
+            data=self._get_pos_data(),
+            timestamps=self._get_pos_timestamps().astype(float),
             reference_frame="(0,0) is what?",  # TODO
         )
 
@@ -147,9 +191,6 @@ class PyControlInterface(BaseTemporalAlignmentInterface):
             )
 
         self._add_to_behavior_module(behavioral_states, nwbfile)
-
-    def set_aligned_timestamps(self):
-        raise NotImplementedError()
 
     def add_to_nwbfile(self, nwbfile: NWBFile, metadata: DeepDict) -> None:
         self.add_behavioral_states(nwbfile)

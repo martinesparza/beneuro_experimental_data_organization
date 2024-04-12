@@ -3,14 +3,15 @@ from pathlib import Path
 import numpy as np
 import spikeinterface.extractors as se
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import SpikeGLXRecordingInterface  # PhySortingInterface
+from neuroconv.datainterfaces import \
+    SpikeGLXRecordingInterface  # PhySortingInterface
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
-from neuroconv.utils import DeepDict
 
-from beneuro_data.conversion.animal_profile_interface import AnimalProfileInterface
-from beneuro_data.conversion.multiprobe_kilosort_interface import (
-    MultiProbeKiloSortInterface,
-)
+from beneuro_data.conversion.animal_profile_interface import \
+    AnimalProfileInterface
+from beneuro_data.conversion.anipose_interface import AniposeInterface
+from beneuro_data.conversion.multiprobe_kilosort_interface import \
+    MultiProbeKiloSortInterface
 from beneuro_data.conversion.pycontrol_interface import PyControlInterface
 
 
@@ -54,7 +55,14 @@ class BeNeuroConverter(NWBConverter):
         },
         Kilosort = {
             "processed_recording_path" : str(processed_session_path),
-        }
+        },
+        AnimalProfile = {
+            "session_path" : str(session_folder_path),
+        },
+        Anipose = {
+            "h5_path" : str(path_to_pose_estimation_h5_file),
+            "raw_session_path" : str(session_folder_path),
+        },
     )
 
     converter = BeNeuroConverter(source_data)
@@ -72,53 +80,72 @@ class BeNeuroConverter(NWBConverter):
         "Kilosort": MultiProbeKiloSortInterface,
         "PyControl": PyControlInterface,
         "AnimalProfile": AnimalProfileInterface,
+        "Anipose": AniposeInterface,
         # TODO "Neuropixels" : NeuropixelsInterface -- add probe location and information
     }
 
     def temporally_align_data_interfaces(self):
-        # just to make the names shorter
-        multikilo = self.data_interface_objects["Kilosort"]
+        adjusting_times = {}
 
-        raw_session_path = Path(
-            self.data_interface_objects["PyControl"].source_data["file_path"]
-        )
+        if "PyControl" in self.data_interface_objects:
+            # start with PyControlInterface
+            pycont_start_time = self.data_interface_objects[
+                "PyControl"
+            ].get_first_rising_edge_time()
 
-        for probe_name, kilosort_interface in zip(
-            multikilo.probe_names, multikilo.kilosort_interfaces
-        ):
-            ap_paths = list(raw_session_path.glob(f"**/*{probe_name}.ap.bin"))
-            assert len(ap_paths) == 1
+            self.data_interface_objects["PyControl"].adjust_timestamps(pycont_start_time)
+            adjusting_times["PyControl"] = pycont_start_time
 
-            # this is needed for the alignment to work
-            # it doesn't need the sync channel inside here, I'll extract that later
-            kilosort_interface.register_recording(
-                # SpikeGLXRecordingInterfaceWithSyncChannel(ap_paths[0])
-                SpikeGLXRecordingInterface(ap_paths[0])
+        if "Kilosort" in self.data_interface_objects:
+            # then do kilosort
+            # just to make the names shorter
+            multikilo = self.data_interface_objects["Kilosort"]
+
+            raw_session_path = Path(
+                self.data_interface_objects["PyControl"].source_data["file_path"]
             )
 
-            # this is used to get the sync channel's values
-            # and figure out when the first rising edge is
-            rec_with_sync_channel = se.read_spikeglx(
-                raw_session_path,
-                stream_name=f"{probe_name}.ap",
-                load_sync_channel=True,
-            )
+            for probe_name, kilosort_interface in zip(
+                multikilo.probe_names, multikilo.kilosort_interfaces
+            ):
+                ap_paths = list(raw_session_path.glob(f"**/*{probe_name}.ap.bin"))
+                assert len(ap_paths) == 1
 
-            # Find the first rising edge in the sync channel
-            # by reading the whole channel into memory
-            # last_channel = np.array(rec_with_sync_channel.get_traces()[1:, -1])
-            # rising_frames = get_rising_frames_from_ttl(last_channel)
-            # first_rise_seconds = rising_frames[0] / rec_with_sync_channel.sampling_frequency
+                # this is needed for the alignment to work
+                # it doesn't need the sync channel inside here, I'll extract that later
+                kilosort_interface.register_recording(
+                    # SpikeGLXRecordingInterfaceWithSyncChannel(ap_paths[0])
+                    SpikeGLXRecordingInterface(ap_paths[0])
+                )
 
-            # Find the first rising edge without having to read the
-            # whole array first, which can be time consuming in my experience
-            first_rising_frame = chunked_first_rise(
-                rec_with_sync_channel.get_traces()[1:, -1], chunk_size=1_000
-            )
-            first_rise_seconds = (
-                first_rising_frame / rec_with_sync_channel.sampling_frequency
-            )
+                # this is used to get the sync channel's values
+                # and figure out when the first rising edge is
+                rec_with_sync_channel = se.read_spikeglx(
+                    raw_session_path,
+                    stream_name=f"{probe_name}.ap",
+                    load_sync_channel=True,
+                )
 
-            # first_rise_seconds is when the clock starts, so this times -1
-            # is when the PyControl recording started relative to the clock
-            kilosort_interface.set_aligned_starting_time(-first_rise_seconds)
+                # Find the first rising edge in the sync channel
+                # by reading the whole channel into memory
+                # last_channel = np.array(rec_with_sync_channel.get_traces()[1:, -1])
+                # rising_frames = get_rising_frames_from_ttl(last_channel)
+                # first_rise_seconds = rising_frames[0] / rec_with_sync_channel.sampling_frequency
+
+                # Find the first rising edge without having to read the
+                # whole array first, which can be time consuming in my experience
+                first_rising_frame = chunked_first_rise(
+                    rec_with_sync_channel.get_traces()[1:, -1], chunk_size=1_000
+                )
+                first_rise_seconds = (
+                    first_rising_frame / rec_with_sync_channel.sampling_frequency
+                )
+
+                # first_rise_seconds is when the clock starts, so this times -1
+                # is when the PyControl recording started relative to the clock
+                kilosort_interface.set_aligned_starting_time(-first_rise_seconds)
+
+                adjusting_times[f"Kilosort {probe_name}"] = first_rise_seconds * 1000
+
+        print("Times of the different interfaces were adjusted with the following values:")
+        print(adjusting_times)

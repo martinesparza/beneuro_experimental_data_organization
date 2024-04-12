@@ -54,7 +54,6 @@ def run_kilosort_on_stream(
     if sorter_params is None:
         sorter_params = {}
 
-    # sorting_KS3 = ss.run_kilosort3(
     sorting_KS3 = ss.run_sorter(
         "kilosort3",
         recording,
