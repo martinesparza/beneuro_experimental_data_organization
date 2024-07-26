@@ -290,6 +290,70 @@ def download_session(
 
 
 @app.command()
+def dl(
+    session_name: Annotated[
+        str, typer.Argument(help="Name of session: M123_2000_02_03_14_15")
+    ],
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior",
+            "-b/-B",
+            help="Download behavioral data (-b) or not (-B)."
+        ),
+    ] = True,
+    include_ephys: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephys/--ignore-ephys",
+            "-e/-E",
+            help="Download ephys data (-e) or not (-E)."
+        ),
+    ] = False,
+    include_videos: Annotated[
+        bool,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            "-v/-V",
+            help="Download video data (-v) or not (-V)."
+        ),
+    ] = False,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+):
+    """
+    Download (raw) experimental data from a given session from the remote server.
+
+    Example usage to download everything:
+        `bnd dl M017_2024_03_12_18_45 -ev`
+    """
+    animal = session_name[:4]
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be included.")
+
+    config = _load_config()
+
+    download_raw_session(
+        remote_session_path = config.REMOTE_PATH / processing_level / animal / session_name,
+        subject_name = animal,
+        local_base_path = config.LOCAL_PATH,
+        remote_base_path = config.REMOTE_PATH,
+        include_behavior = include_behavior,
+        include_ephys = include_ephys,
+        include_videos = include_videos,
+        whitelisted_files_in_root = config.WHITELISTED_FILES_IN_ROOT,
+        allowed_extensions_not_in_root = config.EXTENSIONS_TO_RENAME_AND_UPLOAD
+        )
+    print(f"Session {session_name} downloaded.")
+
+    return True
+
+
+@app.command()
 def kilosort_session(
     local_session_path: Annotated[
         Path, typer.Argument(help="Path to session directory. Can be relative or absolute")
@@ -674,6 +738,121 @@ def upload_session(
         rename_videos_first,
         rename_extra_files_first,
     )
+
+    return True
+
+
+@app.command()
+def up(
+    session_or_animal_name: Annotated[
+        str, typer.Argument(help="Animal or session name: M123 or M123_2000_02_03_14_15")
+    ],
+    include_behavior: Annotated[
+        bool,
+        typer.Option(
+            "--include-behavior/--ignore-behavior",
+            "-b/-B",
+            help="Upload behavioral data (-b) or not (-B)."
+        ),
+    ] = True,
+    include_ephys: Annotated[
+        bool,
+        typer.Option(
+            "--include-ephys/--ignore-ephys",
+            "-e/-E",
+            help="Upload ephys data (-e) or not (-E)."
+        ),
+    ] = False,
+    include_videos: Annotated[
+        bool,
+        typer.Option(
+            "--include-videos/--ignore-videos",
+            "-v/-V",
+            help="Upload video data (-v) or not (-V)."
+        ),
+    ] = False,
+    include_extra_files: Annotated[
+        bool,
+        typer.Option(
+            "--include-extra-files/--ignore-extra-files",
+            help="Upload extra files that are created by the experimenter or other software.",
+        ),
+    ] = True,
+    rename_videos_first: Annotated[
+        bool,
+        typer.Option(
+            "--rename/--no-rename",
+            help="Rename videos before validating and uploading.",
+        ),
+    ] = True,
+    rename_extra_files_first: Annotated[
+        bool,
+        typer.Option(
+            "--rename-extra/--no-rename-extra",
+            help="Rename extra files (e.g. comment.txt) before validating and uploading.",
+        ),
+    ] = True,
+    processing_level: Annotated[
+        str, typer.Argument(help="Processing level of the session. raw or processed.")
+    ] = "raw",
+):
+    """
+    Upload (raw) experimental data to the remote server.
+
+    Example usage to upload everything of a given session:
+        `bnd up M017_2024_03_12_18_45 -ev`
+    Example to upload the videos and ephys of the last session of a subject:
+        `bnd up M017 -evB`
+    """
+    animal = session_or_animal_name[:4]
+
+    if processing_level != "raw":
+        raise NotImplementedError("Sorry, only raw data is supported for now.")
+
+    if all([not include_behavior, not include_ephys, not include_videos]):
+        raise ValueError("At least one data type must be included.")
+
+    # if videos are included, rename them first if not specified otherwise
+    if rename_videos_first is None:
+        rename_videos_first = include_videos
+
+    if rename_videos_first and not include_videos:
+        raise ValueError(
+            "Do not rename videos if you're not uploading them. (Meaning --ignore-videos and --rename-videos are not allowed together.)"
+        )
+
+    config = _load_config()
+
+    if len(session_or_animal_name) > 4:  # session name is given
+        up_done = upload_raw_session(
+            config.LOCAL_PATH / processing_level / animal / session_or_animal_name,
+            animal,
+            config.LOCAL_PATH,
+            config.REMOTE_PATH,
+            include_behavior,
+            include_ephys,
+            include_videos,
+            include_extra_files,
+            config.WHITELISTED_FILES_IN_ROOT,
+            config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
+            rename_videos_first,
+            rename_extra_files_first,
+        )
+        message = f"Session {session_or_animal_name} uploaded."
+    else:  # only animal name is given
+        up_done = upload_last(
+            animal,
+            include_behavior,
+            include_ephys,
+            include_videos,
+            include_extra_files,
+            rename_videos_first,
+            rename_extra_files_first,
+            processing_level,
+        )
+        message = f"Last session of {animal} uploaded."
+    if up_done:
+        print(message)
 
     return True
 
