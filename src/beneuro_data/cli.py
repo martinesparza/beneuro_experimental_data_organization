@@ -784,7 +784,7 @@ def up(
             "--rename/--no-rename",
             help="Rename videos before validating and uploading.",
         ),
-    ] = True,
+    ] = None,
     rename_extra_files_first: Annotated[
         bool,
         typer.Option(
