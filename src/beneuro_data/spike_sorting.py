@@ -11,9 +11,42 @@ except ImportError as e:
         "Could not import spike sorting functionality. You might want to reinstall bnd with `poetry install --with processing`"
     ) from e
 
+try:
+    from kilosort import run_kilosort
+except ImportError as e:
+    raise ImportError("Could not import kilosort. You need to add kilosort "
+                      "to your bnd environment. Find instructions here: "
+                      "https://kilosort.readthedocs.io/en/latest/README.html#instructions")
+
 from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session,
-    validate_raw_ephys_data_of_session)
+    validate_raw_ephys_data_of_session,
+)
+
+
+def run_kilosort4(
+    input_path: Path,
+    output_path: Path,
+    clean_up_temp_files: bool = False,
+    verbose: bool = False,
+    sorter_params: Optional[dict] = None,
+):
+    output_path.mkdir(parents=True, exist_ok=True)
+    settings = {
+        'data_dir': input_path,
+        'results_dir': output_path,
+        'n_chan_bin': 385,
+        'tmin': 0,
+        'tmax': 20
+    }
+
+    (ops, st, clu, tF, Wall, similar_templates, is_ref, est_contam_rate,
+     kept_spikes) = run_kilosort(
+        settings=settings,
+        probe_name='neuropixPhase3B1_kilosortChanMap.mat',
+    )
+
+    return None
 
 
 def run_kilosort_on_stream(
@@ -81,7 +114,11 @@ def get_ap_stream_names(recording_path: Path) -> list[str]:
     Get the names of the AP streams (e.g. "imec0.ap") in a SpikeGLX recording.
     """
     all_stream_names, _ = se.get_neo_streams("spikeglx", str(recording_path))
-    return [stream_name for stream_name in all_stream_names if stream_name.endswith("ap")]
+    return [
+        stream_name
+        for stream_name in all_stream_names
+        if stream_name.endswith("ap")
+    ]
 
 
 def run_kilosort_on_recording_and_save_in_processed(
@@ -129,16 +166,19 @@ def run_kilosort_on_recording_and_save_in_processed(
     recording_folder_name = raw_recording_path.name
     session_folder_name = raw_session_path.name
 
-    processed_session_path = processed_base_path / raw_session_path.relative_to(
-        raw_base_path
+    processed_session_path = (
+        processed_base_path / raw_session_path.relative_to(raw_base_path)
     )
     processed_recording_ephys_path = (
-        processed_session_path / f"{session_folder_name}_ephys" / recording_folder_name
+        processed_session_path
+        / f"{session_folder_name}_ephys"
+        / recording_folder_name
     )
 
     # if they are not explicitly given, figure out the AP streams ~ probes, e.g. imec0.ap
     if stream_names_to_process is None:
         stream_names_to_process = get_ap_stream_names(raw_recording_path)
+
 
     # make sure that the recording contains those streams
     # can catch typos or missing probes when stream names are explicitly given
@@ -152,15 +192,22 @@ def run_kilosort_on_recording_and_save_in_processed(
     for ap_stream_name in stream_names_to_process:
         probe_name = ap_stream_name.split(".")[0]
 
-        probe_folder_name = f"{processed_recording_ephys_path.name}_{probe_name}"
-        processed_probe_path = processed_recording_ephys_path / probe_folder_name
+        probe_folder_name = (
+            f"{processed_recording_ephys_path.name}_{probe_name}"
+        )
+        processed_probe_path = (
+            processed_recording_ephys_path / probe_folder_name
+        )
+
+        raw_probe_path = (
+            raw_recording_path / probe_folder_name
+        )
 
         if verbose:
             print(f"Running Kilosort for {ap_stream_name}")
 
-        _ = run_kilosort_on_stream(
-            input_path=raw_recording_path,
-            stream_name=f"{probe_name}.ap",
+        run_kilosort4(
+            input_path=raw_probe_path,
             output_path=processed_probe_path,
             clean_up_temp_files=clean_up_temp_files,
             verbose=verbose,
@@ -211,9 +258,11 @@ def run_kilosort_on_session_and_save_in_processed(
         raw_session_path, subject_name, allowed_extensions_not_in_root
     )
 
-    # get the actual folders because validate_raw_ephys_data_of_session returns a list of files
-    ephys_recording_folders = _find_spikeglx_recording_folders_in_session(raw_session_path)
-
+    # get the actual folders because validate_raw_ephys_data_of_session
+    # returns a list of files
+    ephys_recording_folders = _find_spikeglx_recording_folders_in_session(
+        raw_session_path
+    )
     for recording_path in ephys_recording_folders:
         if verbose:
             print(f"Processing {recording_path.name}...")

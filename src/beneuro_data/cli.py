@@ -1,6 +1,7 @@
 import datetime
 from pathlib import Path
 from typing import List, Optional
+import logging
 
 import typer
 from rich import print
@@ -355,14 +356,8 @@ def dl(
 
 @app.command()
 def kilosort_session(
-    local_session_path: Annotated[
-        Path, typer.Argument(help="Path to session directory. Can be relative or absolute")
-    ],
-    subject_name: Annotated[
-        str,
-        typer.Argument(
-            help="Name of the subject the session belongs to. (Used for confirmation.)"
-        ),
+    session_name: Annotated[
+        str, typer.Argument(help="Name of session: M123_2000_02_03_14_15")
     ],
     probes: Annotated[
         Optional[List[str]],
@@ -403,18 +398,21 @@ def kilosort_session(
     Suppressing output:
         `bnd kilosort-session . M020 --no-verbose`
     """
+
     # this will throw an error if the dependencies are not available
     from beneuro_data.spike_sorting import \
         run_kilosort_on_session_and_save_in_processed
 
     config = _load_config()
 
-    if not local_session_path.absolute().is_dir():
-        raise ValueError("Session path must be a directory.")
-    if not local_session_path.absolute().exists():
+    # Parse settings
+    subject_name = session_name[:4]
+    processing_level = "raw"  # TODO: Add different processing levels.
+    absolute_session_path = config.LOCAL_PATH / processing_level / subject_name / session_name
+    print(f'Session found in {absolute_session_path}')
+
+    if not absolute_session_path.exists():
         raise ValueError("Session path does not exist.")
-    if not local_session_path.absolute().is_relative_to(config.LOCAL_PATH):
-        raise ValueError("Session path must be inside the local root folder.")
 
     if len(probes) != 0:
         if len(set(probes)) != len(probes):
@@ -423,15 +421,15 @@ def kilosort_session(
         stream_names_to_process = [f"{probe}.ap" for probe in probes]
         # check that they are all in the session folder somewhere
         for stream_name in stream_names_to_process:
-            if len(list(local_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
+            if len(list(absolute_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
                 raise ValueError(
-                    f"No file found for {stream_name} in {local_session_path.absolute()}"
+                    f"No file found for {stream_name} in {absolute_session_path.absolute()}"
                 )
     else:
         stream_names_to_process = None
 
     run_kilosort_on_session_and_save_in_processed(
-        local_session_path.absolute(),
+        absolute_session_path,
         subject_name,
         config.LOCAL_PATH,
         config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
