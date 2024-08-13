@@ -1,4 +1,5 @@
 import datetime
+import json
 from pathlib import Path
 from typing import List, Optional
 import logging
@@ -365,6 +366,16 @@ def kilosort_session(
             help="List of probes to process. If nothing is given, all probes are processed."
         ),
     ] = None,
+    custom_params: Annotated[
+        bool,
+        typer.Option(
+            "--custom_params/--default-params",
+            help="Add custom parameters to kilosort algorithm. File must be "
+                 "named sorter_params.json and found in the raw session "
+                 "folder. Field names can be found in "
+                 "https://github.com/MouseLand/Kilosort/blob/main/docs/parameters.rst"
+        )
+    ] = False,
     clean_up_temp_files: Annotated[
         bool,
         typer.Option(
@@ -428,6 +439,18 @@ def kilosort_session(
     else:
         stream_names_to_process = None
 
+    if custom_params:
+        sorter_params_file = list(absolute_session_path.glob("*.json"))
+        if len(sorter_params_file) > 1:
+            raise ValueError(f"Too many .json files found. Please create a "
+                             f"single sorter_params.json file for the session")
+        elif len(sorter_params_file) == 0:
+            raise ValueError(f"No sorter_params.json file found. Please "
+                             f"create one or remove the `--custom-params` flag")
+        with sorter_params_file[0].open('r') as file:
+            sorter_params = json.load(file)
+        breakpoint()
+
     run_kilosort_on_session_and_save_in_processed(
         absolute_session_path,
         subject_name,
@@ -435,6 +458,7 @@ def kilosort_session(
         config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
         stream_names_to_process=stream_names_to_process,
         clean_up_temp_files=clean_up_temp_files,
+        sorter_params=sorter_params,
         verbose=verbose,
     )
 

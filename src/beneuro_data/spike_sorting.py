@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Optional
+import warnings
 
 try:
     import spikeinterface.extractors as se
@@ -27,26 +28,30 @@ from beneuro_data.data_validation import (
 def run_kilosort4(
     input_path: Path,
     output_path: Path,
-    clean_up_temp_files: bool = False,
-    verbose: bool = False,
     sorter_params: Optional[dict] = None,
 ):
-    output_path.mkdir(parents=True, exist_ok=True)
-    settings = {
-        'data_dir': input_path,
-        'results_dir': output_path,
-        'n_chan_bin': 385,
-        'tmin': 0,
-        'tmax': 20
-    }
+
+    if sorter_params is None:
+        sorter_params = {
+            "n_chan_bin": 385,
+            "tmin": 0,
+            "tmax": 20,
+            # TODO: Introduce this as an external file
+        }
+    else:
+        if "n_chan_bin" not in sorter_params:
+            warnings.warn("`n_chan_bin` not specific in custom parameters. "
+                         "Setting it to default value n_chan_bin=385")
 
     (ops, st, clu, tF, Wall, similar_templates, is_ref, est_contam_rate,
      kept_spikes) = run_kilosort(
-        settings=settings,
+        settings=sorter_params,
         probe_name='neuropixPhase3B1_kilosortChanMap.mat',
+        data_dir=input_path,
+        results_dir=output_path,
     )
 
-    return None
+    return
 
 
 def run_kilosort_on_stream(
@@ -126,6 +131,7 @@ def run_kilosort_on_recording_and_save_in_processed(
     base_path: Path,
     stream_names_to_process: Optional[list[str]] = None,
     clean_up_temp_files: bool = False,
+    sorter_params: Optional[dict] = None,
     verbose: bool = False,
 ) -> None:
     """
@@ -191,6 +197,8 @@ def run_kilosort_on_recording_and_save_in_processed(
     # run kilosort for all probes in the recording
     for ap_stream_name in stream_names_to_process:
         probe_name = ap_stream_name.split(".")[0]
+        if verbose:
+            print(f"Running Kilosort for {ap_stream_name}")
 
         probe_folder_name = (
             f"{processed_recording_ephys_path.name}_{probe_name}"
@@ -199,18 +207,29 @@ def run_kilosort_on_recording_and_save_in_processed(
             processed_recording_ephys_path / probe_folder_name
         )
 
+        # Make dir and check its empty
+        processed_probe_path.mkdir(parents=True, exist_ok=True)
+        if any(processed_probe_path.iterdir()):
+            user_input = input(
+                f"Output folder '{processed_probe_path}' is not "
+                f"empty. Do you want to continue? (y/n): ").strip().lower()
+            if user_input == 'n':
+                print(f"Aborted sorting probe {probe_name}")
+                continue
+                # raise ValueError(f"Operation aborted")
+            if user_input == 'y':
+                pass
+            else:
+                raise ValueError(f"Please specify one of (y/n) options")
+
         raw_probe_path = (
             raw_recording_path / probe_folder_name
         )
 
-        if verbose:
-            print(f"Running Kilosort for {ap_stream_name}")
-
         run_kilosort4(
             input_path=raw_probe_path,
             output_path=processed_probe_path,
-            clean_up_temp_files=clean_up_temp_files,
-            verbose=verbose,
+            sorter_params=sorter_params
         )
 
 
@@ -221,6 +240,7 @@ def run_kilosort_on_session_and_save_in_processed(
     allowed_extensions_not_in_root: tuple[str, ...],
     stream_names_to_process: Optional[list[str]] = None,
     clean_up_temp_files: bool = False,
+    sorter_params: Optional[dict] = None,
     verbose: bool = False,
 ) -> None:
     """
@@ -272,6 +292,7 @@ def run_kilosort_on_session_and_save_in_processed(
             base_path,
             stream_names_to_process,
             clean_up_temp_files,
+            sorter_params,
             verbose,
         )
 
