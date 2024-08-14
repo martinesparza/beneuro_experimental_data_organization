@@ -376,14 +376,14 @@ def kilosort_session(
                  "https://github.com/MouseLand/Kilosort/blob/main/docs/parameters.rst"
         )
     ] = False,
-    clean_up_temp_files: Annotated[
+    clean_up_temp_files: Annotated[  # TODO: Implement tmp file removal
         bool,
         typer.Option(
             "--clean-up-temp-files/--keep-temp-files",
             help="Keep the binary files created or not. They are huge, but needed for running Phy later.",
         ),
     ] = True,
-    verbose: Annotated[
+    verbose: Annotated[  # FIXME: Fix verbosity
         bool, typer.Option(help="Print info about what is being run.")
     ] = True,
 ):
@@ -394,20 +394,16 @@ def kilosort_session(
 
     \b
     Basic usage:
-        `bnd kilosort-session . M020`
+        `bnd kilosort-session M017_2024_03_12_18_45`
 
     \b
     Only sorting specific probes:
-        `bnd kilosort-session . M020 imec0`
-        `bnd kilosort-session . M020 imec0 imec1`
+        `bnd kilosort-session M017_2024_03_12_18_45 imec0`
+        `bnd kilosort-session M017_2024_03_12_18_45 imec0 imec1`
 
     \b
-    Keeping binary files useful for Phy:
-        `bnd kilosort-session . M020 --keep-temp-files`
-
-    \b
-    Suppressing output:
-        `bnd kilosort-session . M020 --no-verbose`
+    Using custom parameters:
+        `bnd kilosort-session M017_2024_03_12_18_45 --custom-params`
     """
 
     # this will throw an error if the dependencies are not available

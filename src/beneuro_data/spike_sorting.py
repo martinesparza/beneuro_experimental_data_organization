@@ -34,9 +34,6 @@ def run_kilosort4(
     if sorter_params is None:
         sorter_params = {
             "n_chan_bin": 385,
-            "tmin": 0,
-            "tmax": 20,
-            # TODO: Introduce this as an external file
         }
     else:
         if "n_chan_bin" not in sorter_params:
