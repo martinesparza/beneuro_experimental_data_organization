@@ -31,6 +31,12 @@ def run_kilosort4(
     sorter_params: Optional[dict] = None,
 ):
 
+    # Check if probe folder already exists. It not, download probes
+    from kilosort.utils import PROBE_DIR, download_probes
+    if not PROBE_DIR.exists():
+        print(f"Probe directory not found, downloading probes")
+        download_probes()
+
     if sorter_params is None:
         sorter_params = {
             "n_chan_bin": 385,
