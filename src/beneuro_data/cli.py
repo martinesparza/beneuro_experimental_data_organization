@@ -445,7 +445,8 @@ def kilosort_session(
                              f"create one or remove the `--custom-params` flag")
         with sorter_params_file[0].open('r') as file:
             sorter_params = json.load(file)
-        breakpoint()
+    else:
+        sorter_params = None
 
     run_kilosort_on_session_and_save_in_processed(
         absolute_session_path,
