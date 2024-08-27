@@ -9,15 +9,22 @@ try:
     import spikeinterface.sorters as ss
 except ImportError as e:
     raise ImportError(
-        "Could not import spike sorting functionality. You might want to reinstall bnd with `poetry install --with processing`"
+        "Could not import spike sorting functionality. You might want to "
+        "reinstall bnd with `poetry install --with processing`"
     ) from e
 
 try:
     from kilosort import run_kilosort
+    from kilosort.utils import PROBE_DIR, download_probes
+    if not PROBE_DIR.exists():
+        print(f"Probe directory not found, downloading probes")
+        download_probes()
+
 except ImportError as e:
     raise ImportError("Could not import kilosort. You need to add kilosort "
                       "to your bnd environment. Find instructions here: "
-                      "https://kilosort.readthedocs.io/en/latest/README.html#instructions")
+                      "https://kilosort.readthedocs.io/en/latest/README.html"
+                      "#instructions")
 
 from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session,
@@ -28,14 +35,27 @@ from beneuro_data.data_validation import (
 def run_kilosort4(
     input_path: Path,
     output_path: Path,
+    save_preprocessed_copy: bool = False,
     sorter_params: Optional[dict] = None,
 ):
+    """
+    Run kilosort on a single stream and save in processed
 
-    # Check if probe folder already exists. It not, download probes
-    from kilosort.utils import PROBE_DIR, download_probes
-    if not PROBE_DIR.exists():
-        print(f"Probe directory not found, downloading probes")
-        download_probes()
+    Parameters
+    ----------
+    input_path: Path
+        The path to the probes' raw data
+    output_path: Path
+        The path to the probes' processed folder
+    save_preprocessed_copy: bool
+        Whether to save temporary .mat and .dat files left by Kilosort after sorting.
+    sorter_params: Optional [dict]
+        Provide a specific set of parameters to use during sorting.
+
+    Returns
+    -------
+    None, but the results are saved in the processed folder.
+    """
 
     if sorter_params is None:
         sorter_params = {
@@ -46,12 +66,12 @@ def run_kilosort4(
             warnings.warn("`n_chan_bin` not specific in custom parameters. "
                          "Setting it to default value n_chan_bin=385")
 
-    (ops, st, clu, tF, Wall, similar_templates, is_ref, est_contam_rate,
-     kept_spikes) = run_kilosort(
+    run_kilosort(
         settings=sorter_params,
         probe_name='neuropixPhase3B1_kilosortChanMap.mat',
         data_dir=input_path,
         results_dir=output_path,
+        save_preprocessed_copy=save_preprocessed_copy,
     )
 
     return
@@ -133,7 +153,7 @@ def run_kilosort_on_recording_and_save_in_processed(
     raw_recording_path: Path,
     base_path: Path,
     stream_names_to_process: Optional[list[str]] = None,
-    clean_up_temp_files: bool = False,
+    save_preprocessed_copy: bool = False,
     sorter_params: Optional[dict] = None,
     verbose: bool = False,
 ) -> None:
@@ -150,8 +170,10 @@ def run_kilosort_on_recording_and_save_in_processed(
     stream_names_to_process: Optional[tuple[str, ...]]
         A tuple of stream names to process.
         If None, all available AP streams will be processed.
-    clean_up_temp_files: bool
-        Whether to delete temporary .mat and .dat files left by Kilosort after sorting.
+    save_preprocessed_copy: bool
+        Whether to save temporary .mat and .dat files left by Kilosort after sorting.
+    sorter_params : Optional[dict]
+        Provide a specific set of parameters to use during sorting.
     verbose: bool
         Run Kilosort in verbose mode.
 
@@ -232,6 +254,7 @@ def run_kilosort_on_recording_and_save_in_processed(
         run_kilosort4(
             input_path=raw_probe_path,
             output_path=processed_probe_path,
+            save_preprocessed_copy=save_preprocessed_copy,
             sorter_params=sorter_params
         )
 
@@ -242,7 +265,7 @@ def run_kilosort_on_session_and_save_in_processed(
     base_path: Path,
     allowed_extensions_not_in_root: tuple[str, ...],
     stream_names_to_process: Optional[list[str]] = None,
-    clean_up_temp_files: bool = False,
+    save_preprocessed_copy: bool = False,
     sorter_params: Optional[dict] = None,
     verbose: bool = False,
 ) -> None:
@@ -264,8 +287,10 @@ def run_kilosort_on_session_and_save_in_processed(
     stream_names_to_process: Optional[tuple[str, ...]]
         A tuple of stream names to process.
         If None, all available AP streams will be processed.
-    clean_up_temp_files: bool
-        Whether to delete temporary .mat and .dat files left by Kilosort after sorting.
+    save_preprocessed_copy: bool
+        Whether to save temporary .mat and .dat files left by Kilosort after sorting.
+    sorter_params : Optional[dict]
+        Provide a specific set of parameters to use during sorting.
     verbose: bool
         Run Kilosort in verbose mode.
 
@@ -289,12 +314,14 @@ def run_kilosort_on_session_and_save_in_processed(
     for recording_path in ephys_recording_folders:
         if verbose:
             print(f"Processing {recording_path.name}...")
+            if sorter_params is not None:
+                print(f"Using custom params...")
 
         run_kilosort_on_recording_and_save_in_processed(
             recording_path,
             base_path,
             stream_names_to_process,
-            clean_up_temp_files,
+            save_preprocessed_copy,
             sorter_params,
             verbose,
         )

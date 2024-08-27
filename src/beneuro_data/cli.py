@@ -2,7 +2,6 @@ import datetime
 import json
 from pathlib import Path
 from typing import List, Optional
-import logging
 
 import typer
 from rich import print
@@ -363,29 +362,32 @@ def kilosort_session(
     probes: Annotated[
         Optional[List[str]],
         typer.Argument(
-            help="List of probes to process. If nothing is given, all probes are processed."
+            help="List of probes to process. If nothing is given, all probes "
+                 "are processed."
         ),
     ] = None,
     custom_params: Annotated[
         bool,
         typer.Option(
-            "--custom_params/--default-params",
+            "--custom-params/--default-params",
             help="Add custom parameters to kilosort algorithm. File must be "
                  "named sorter_params.json and found in the raw session "
                  "folder. Field names can be found in "
-                 "https://github.com/MouseLand/Kilosort/blob/main/docs/parameters.rst"
+                 "https://github.com/MouseLand/Kilosort/blob/main/docs"
+                 "/parameters.rst"
         )
     ] = False,
-    clean_up_temp_files: Annotated[  # TODO: Implement tmp file removal
+    save_preprocessed_copy: Annotated[
         bool,
         typer.Option(
-            "--clean-up-temp-files/--keep-temp-files",
-            help="Keep the binary files created or not. They are huge, but needed for running Phy later.",
+            "--save-preprocessed-copy/--dont-save-preprocessed-copy",
+            help="Keep the binary files created or not. They are huge, "
+                 "but needed for running Phy later.",
         ),
-    ] = True,
-    verbose: Annotated[  # FIXME: Fix verbosity
+    ] = False,
+    verbose: Annotated[
         bool, typer.Option(help="Print info about what is being run.")
-    ] = True,
+    ] = True, # Currently not in use
 ):
     """
     Run Kilosort 4 on a session and save the results in the processed folder.
@@ -414,7 +416,7 @@ def kilosort_session(
 
     # Parse settings
     subject_name = session_name[:4]
-    processing_level = "raw"  # TODO: Add different processing levels.
+    processing_level = "raw"
     absolute_session_path = config.LOCAL_PATH / processing_level / subject_name / session_name
     print(f'Session found in {absolute_session_path}')
 
@@ -454,7 +456,7 @@ def kilosort_session(
         config.LOCAL_PATH,
         config.EXTENSIONS_TO_RENAME_AND_UPLOAD,
         stream_names_to_process=stream_names_to_process,
-        clean_up_temp_files=clean_up_temp_files,
+        save_preprocessed_copy=save_preprocessed_copy,
         sorter_params=sorter_params,
         verbose=verbose,
     )
