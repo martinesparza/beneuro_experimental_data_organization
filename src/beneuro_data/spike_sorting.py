@@ -1,6 +1,15 @@
 import logging
+import platform
+import warnings
 from pathlib import Path
 from typing import Optional
+
+from spikeinterface.sorters.utils.misc import (
+    has_docker,
+    has_docker_nvidia_installed,
+    has_docker_python,
+    has_nvidia
+)
 
 try:
     import spikeinterface.extractors as se
@@ -13,7 +22,8 @@ except ImportError as e:
 
 from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session,
-    validate_raw_ephys_data_of_session)
+    validate_raw_ephys_data_of_session
+)
 
 
 def run_kilosort_on_stream(
@@ -203,6 +213,23 @@ def run_kilosort_on_session_and_save_in_processed(
     -------
     None, but the results are saved in the processed folder.
     """
+    # adapted from spikeinterface
+    if platform.system() != "Linux":
+        warnings.warn(
+            f"Spike sorting might not work on {platform.system()}. Try Linux instead."
+        )
+    if platform.system() == "Linux" and not has_docker_nvidia_installed():
+        warnings.warn(
+            "Kilosort is best run on a GPU, otherwise it might take very long, "
+            "Your computer seems to not be able to use the GPU in docker images. "
+            "Try installing `nvidia-container-toolkit`."
+            "\n\n"
+            "Some additional info:\n"
+            f"NVIDIA GPU working: {has_nvidia()}"
+            f"Docker installed: {has_docker()}"
+            f"Docker Python package installed: {has_docker_python()}"
+        )
+
     if isinstance(raw_session_path, str):
         raw_session_path = Path(raw_session_path)
 

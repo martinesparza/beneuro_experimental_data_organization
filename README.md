@@ -6,19 +6,28 @@ Features so far:
 - validating raw experimental data on the computers doing the recording
 - uploading experimental data to the RDS server
 - downloading experimental data from the RDS server
+- running spike sorting
 
 Features on the way:
 - checking and uploading automatically on a schedule
-- running spike sorting
 - converting processed data to NWB
 - converting NWB to TrialData
 
 # Setting up
 ## Installation
-1. Create an empty conda environment in which you will install the tool. The environment only needs Python and pip (and poetry, but you can also install that with pip).
-   You can do this with `mamba create -n bnd python pip poetry`.
+1. Create an empty conda environment in which you will install the tool. The environment only needs Python and pip.
+   You can do this with `mamba create -n bnd python pip`.
 
-   Alternatively you can install with the system Python, but that's not really recommended. If you have conda/mamba on the computer, just use that for a peace of mind.
+   Alternatively you can install with the system Python, but that's not really recommended. If you have conda/mamba on the computer, just use that for a peace of mind for now.
+
+   You will also need [poetry](https://python-poetry.org). If you don't already have it installed, follow one of installation methods [here](https://python-poetry.org/docs/#installation), which on Linux will most likely be one of the following:
+
+     `pipx install poetry`
+
+     `curl -sSL https://install.python-poetry.org | python3 -`
+
+   (Note that it is not advised to install poetry in the environment you just created.)
+
 1. Clone this repo
    
     `git clone https://github.com/BeNeuroLab/beneuro_experimental_data_organization.git`
@@ -26,9 +35,16 @@ Features on the way:
 1. Activate the environment you installed in.
 
      `conda activate bnd`
-1. Install the package with
+1. Install the package with either
 
      `poetry install`
+
+   or if you want spike sorting functionality:
+
+     `poetry install --with processing`
+
+   For more info, see the [spike sorting instructions](#spike-sorting).
+
 1. Test that the install worked with
 
      `poetry run pytest`
@@ -115,6 +131,35 @@ Using the session's path, e.g. after navigating to the session's folder on RDS m
 or just the last session of a subject:
 
   `bnd download-last <subject-name>`
+
+## Spike sorting
+Currently we are using Kilosort 4 for spike sorting, and provide a command to run sorting on a session and save the results in the processed folder.
+
+Note that you will need some extra dependencies that are not installed by default, and that this will most likely only work on Linux.<br>
+You can install the spike sorting dependencies by running `poetry install --with processing` in bnd's root folder.
+
+You will also need docker to run the pre-packaged Kilosort docker images and the nvidia-container-toolkit to allow those images to use the GPU.<br>
+If not already installed, install docker following the instructions [on this page](https://docs.docker.com/engine/install/ubuntu/), then install nvidia-container-toolkit following [these instructions](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
+
+
+Basic usage:
+
+  `bnd kilosort-session . M020`
+
+Only sorting specific probes:
+
+  `bnd kilosort-session . M020 imec0`
+
+  `bnd kilosort-session . M020 imec0 imec1`
+
+Keeping binary files useful for Phy:
+
+  `bnd kilosort-session . M020 --keep-temp-files`
+
+Suppressing output:
+
+  `bnd kilosort-session . M020 --no-verbose`
+
 
 
 # Please file an issue if something doesn't work or is just annoying to use!
