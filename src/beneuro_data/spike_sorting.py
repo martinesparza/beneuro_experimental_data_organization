@@ -25,7 +25,7 @@ def run_kilosort_on_stream(
     sorter_params: Optional[dict] = None,
 ):
     """
-    Run Kilosort 4 on a SpikeGLX recording. Testing this on linux
+    Run Kilosort 4 on a SpikeGLX recording.
 
     Parameters
     ----------
