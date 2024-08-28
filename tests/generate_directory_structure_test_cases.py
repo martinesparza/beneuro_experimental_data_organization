@@ -52,13 +52,23 @@ def create_directory_structure_from_dict(data: dict, path: str):
                 # this will create an empty file
                 pass
         except FileNotFoundError as e:
-            if ((platform.system() == 'Windows') and os.path.exists(path) and
-                (len(os.path.join(path, data["name"])) >= 260)):
-                explanation = ("Default Windows configuration cannot handle "
-                               "paths of more than 259 characters")
-
+            # we have found that some tests fail on certain windows systems
+            # because by default windows doesn't allow file paths to be longer
+            # than 259 characters
+            if (
+                (platform.system() == "Windows")
+                and os.path.exists(path)
+                and os.path.isdir(path)
+                and (len(os.path.join(path, data["name"])) >= 260)
+            ):
+                explanation = (
+                    "Default Windows configuration cannot handle "
+                    "file paths of more than 259 characters. "
+                    "To potentially remove this limitation on your computer, please see "
+                    "https://docs.python.org/3/using/windows.html#removing-the-max-path-limitation"
+                )
                 # Raise error with explanation
-                raise WindowsMaxPathError(explanation)
+                raise WindowsMaxPathError(explanation) from e
             else:
                 raise e
 
