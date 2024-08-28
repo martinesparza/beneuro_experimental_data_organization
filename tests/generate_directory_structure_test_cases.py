@@ -1,6 +1,11 @@
 import os
+import platform
 
 from ruamel.yaml import YAML
+
+
+class WindowsMaxPathError(FileNotFoundError):
+    pass
 
 
 def generate_dict_from_path(path: str):
@@ -42,14 +47,26 @@ def create_directory_structure_from_dict(data: dict, path: str):
         for child in data.get("children", []):
             create_directory_structure_from_dict(child, path)
     elif data["type"] == "file":
-        with open(os.path.join(path, data["name"]), "w") as f:
-            # this will create an empty file
-            pass
+        try:
+            with open(os.path.join(path, data["name"]), "w") as f:
+                # this will create an empty file
+                pass
+        except FileNotFoundError as e:
+            if ((platform.system() == 'Windows') and os.path.exists(path) and
+                (len(os.path.join(path, data["name"])) >= 260)):
+                explanation = ("Default Windows configuration cannot handle "
+                               "paths of more than 259 characters")
+
+                # Raise error with explanation
+                raise WindowsMaxPathError(explanation)
+            else:
+                raise e
 
 
 if __name__ == "__main__":
     test_dir_path = os.path.dirname(__file__)
-    yaml_folder = os.path.join(test_dir_path, "number_of_valid_sessions_test_yamls")
+    yaml_folder = os.path.join(test_dir_path,
+                               "number_of_valid_sessions_test_yamls")
     # fake_directory_structure_folder = os.path.join(
     #    test_dir_path, "directory_structure_test_cases"
     # )
