@@ -1,6 +1,11 @@
 import os
+import platform
 
 from ruamel.yaml import YAML
+
+
+class WindowsMaxPathError(FileNotFoundError):
+    pass
 
 
 def generate_dict_from_path(path: str):
@@ -42,9 +47,30 @@ def create_directory_structure_from_dict(data: dict, path: str):
         for child in data.get("children", []):
             create_directory_structure_from_dict(child, path)
     elif data["type"] == "file":
-        with open(os.path.join(path, data["name"]), "w") as f:
-            # this will create an empty file
-            pass
+        try:
+            with open(os.path.join(path, data["name"]), "w") as f:
+                # this will create an empty file
+                pass
+        except FileNotFoundError as e:
+            # we have found that some tests fail on certain windows systems
+            # because by default windows doesn't allow file paths to be longer
+            # than 259 characters
+            if (
+                (platform.system() == "Windows")
+                and os.path.exists(path)
+                and os.path.isdir(path)
+                and (len(os.path.join(path, data["name"])) >= 260)
+            ):
+                explanation = (
+                    "Default Windows configuration cannot handle "
+                    "file paths of more than 259 characters. "
+                    "To potentially remove this limitation on your computer, please see "
+                    "https://docs.python.org/3/using/windows.html#removing-the-max-path-limitation"
+                )
+                # Raise error with explanation
+                raise WindowsMaxPathError(explanation) from e
+            else:
+                raise e
 
 
 if __name__ == "__main__":
