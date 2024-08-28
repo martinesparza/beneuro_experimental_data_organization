@@ -75,8 +75,7 @@ def create_directory_structure_from_dict(data: dict, path: str):
 
 if __name__ == "__main__":
     test_dir_path = os.path.dirname(__file__)
-    yaml_folder = os.path.join(test_dir_path,
-                               "number_of_valid_sessions_test_yamls")
+    yaml_folder = os.path.join(test_dir_path, "number_of_valid_sessions_test_yamls")
     # fake_directory_structure_folder = os.path.join(
     #    test_dir_path, "directory_structure_test_cases"
     # )
