@@ -3,6 +3,7 @@ from typing import Optional
 
 import h5py
 import numpy as np
+import pandas as pd
 import spikeinterface.extractors as se
 from ndx_pose import PoseEstimation, PoseEstimationSeries
 from neuroconv.basetemporalalignmentinterface import \
@@ -41,13 +42,23 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         "right_wrist",
     ]
 
-    def __init__(self, h5_path: FilePathType, raw_session_path: FilePathType):
+    angles = [
+        "left_elbow_angle",
+        "right_elbow_angle",
+        "left_knee_angle",
+        "right_knee_angle",
+        "left_ankle_angle",
+        "right_ankle_angle",
+    ]
+
+    def __init__(self, csv_path: FilePathType, raw_session_path: FilePathType):
         super().__init__()
 
-        self.h5_path = Path(h5_path)
+        self.csv_path = Path(csv_path)
         self.raw_session_path = Path(raw_session_path)
 
-        self.pose_data = self.load_anipose_from_h5()
+        # self.pose_data = self.load_anipose_from_h5()
+        self.pose_data = self.load_anipose_from_csv()
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         behavior_module = nwbfile.processing.get("behavior")
@@ -74,24 +85,31 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         metadata: Optional[DeepDict] = None,
         stub_test: bool = False,
     ):
-        try:
-            timestamps = self.get_original_timestamps()
-            starting_time = None
-            rate = None
-        except:
+
+        # Commenting this for now since theoretically cameras dont need
+        # allignment
+        # try:
+        #     timestamps = self.get_original_timestamps()
+        #     starting_time = None
+        #     rate = None
+        # except:
             # if we can't get the timestamps from spikeglx for whatever reason
             # then just assume that the frames come with DEFAULT_FPS
             # and that the first one is at t=0 which should be true
-            timestamps = None
-            starting_time = 0.0
-            rate = float(DEFAULT_FPS)
+
+        timestamps = None
+        starting_time = 0.0
+        rate = float(DEFAULT_FPS)
 
         keypoint_series_objects = []
-        for i, keypoint_name in enumerate(self.keypoint_names):
+        for keypoint_name in self.keypoint_names:
+
             keypoint_series = PoseEstimationSeries(
                 name=keypoint_name,
                 description=f"Marker placed at {keypoint_name.replace('_', ' ')}",
-                data=self.pose_data[:, i, :],
+                data=self.pose_data[[f"{keypoint_name}_x",
+                                     f"{keypoint_name}_y",
+                                     f"{keypoint_name}_z"]].to_numpy(),
                 unit="a.u.",  # TODO
                 reference_frame="(0, 0, 0) is what?",  # TODO
                 timestamps=timestamps,
@@ -101,6 +119,25 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                 confidence_definition="Filled with nan because we don't have an estimate.",
             )
             keypoint_series_objects.append(keypoint_series)
+
+        for angle_name in self.angles:
+            angle_array = self.pose_data[[f"{angle_name}"]].to_numpy()
+            angle_series = PoseEstimationSeries(
+                name=angle_name,
+                data=np.concatenate(
+                    (angle_array, np.zeros((angle_array.shape[0], 1))),
+                    axis=1
+                ),
+                description='Angle information. Second dimension is nans.',
+                unit="a.u.",  # TODO
+                reference_frame="(0, 0, 0) is what?",  # TODO
+                timestamps=timestamps,
+                starting_time=starting_time,
+                rate=rate,
+                confidence=np.full(self.n_frames, np.nan),
+                confidence_definition="Filled with nan because we don't have an estimate.",
+            )
+            keypoint_series_objects.append(angle_series)
 
         pose_estimation = PoseEstimation(
             name="Pose estimation",
@@ -118,6 +155,10 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
             assert file["tracks"].shape[1] == 1
             pose_data = file["tracks"][:, 0, :, :]
 
+        return pose_data
+
+    def load_anipose_from_csv(self):
+        pose_data = pd.read_csv(self.csv_path)
         return pose_data
 
     @property

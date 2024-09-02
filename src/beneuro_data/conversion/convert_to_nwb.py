@@ -61,24 +61,26 @@ def _try_adding_profile_to_source_data(source_data: dict, raw_session_path: Path
 def _try_adding_anipose_to_source_data(
     source_data: dict, processed_session_path: Path, raw_session_path: Path
 ):
-    h5_paths = list(processed_session_path.glob("**/*_pose_estimation.h5"))
+    # h5_paths = list(processed_session_path.glob("**/*_pose_estimation.h5"))
+    csv_paths = list(processed_session_path.glob("**/*3dpts_angles.csv"))
 
-    if len(h5_paths) == 0:
+    if len(csv_paths) == 0:
         warnings.warn("No pose estimation data found.")
         return
 
-    if len(h5_paths) > 1:
-        raise FileExistsError(f"More than one pose estimation HDF file found: {h5_paths}")
+    if len(csv_paths) > 1:
+        raise FileExistsError(f"More than one pose estimation HDF file "
+                              f"found: {csv_paths}")
 
-    h5_path = h5_paths[0]
+    csv_path = csv_paths[0]
     try:
-        AniposeInterface(h5_path, raw_session_path)
+        AniposeInterface(csv_path, raw_session_path)
     except Exception as e:
         warnings.warn(f"Problem loading anipose data: {str(e)}")
     else:
         source_data.update(
             Anipose={
-                "h5_path": str(h5_path),
+                "csv_path": str(csv_path),
                 "raw_session_path": str(raw_session_path),
             }
         )
