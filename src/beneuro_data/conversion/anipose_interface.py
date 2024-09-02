@@ -15,6 +15,8 @@ from pynwb import NWBFile
 from beneuro_data.data_validation import _find_spikeglx_recording_folders_in_session
 from beneuro_data.spike_sorting import get_ap_stream_names
 
+DEFAULT_FPS = 100
+
 
 class AniposeInterface(BaseTemporalAlignmentInterface):
     DEFAULT_FPS = 100
