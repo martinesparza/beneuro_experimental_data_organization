@@ -22,6 +22,49 @@ app = typer.Typer()
 
 
 @app.command()
+def nwb_to_trialdata(
+    local_session_path: Annotated[
+        Path,
+        typer.Argument(
+            help="Path to session directory"
+        ),
+    ],
+    task_format: Annotated[
+        str,
+        typer.Argument(
+            help="Task format to use. E.g., 'earthquake', 'bci', etc"
+        )
+    ],
+    verbose: Annotated[
+        bool,
+        typer.Option(
+            help="Verbosity of formatting process"
+        )
+    ] = False
+):
+    config = _load_config()
+    if not local_session_path.absolute().is_dir():
+        raise ValueError("Session path must be a directory.")
+    if not local_session_path.absolute().exists():
+        raise ValueError("Session path does not exist.")
+    if not local_session_path.absolute().is_relative_to(config.LOCAL_PATH):
+        raise ValueError("Session path must be inside the local root folder.")
+
+    nwbfiles = list(local_session_path.glob('*.nwb'))
+    if len(nwbfiles) > 1:
+        raise FileNotFoundError("Too many nwb files in session folder!")
+    elif not nwbfiles:
+        raise FileNotFoundError("No .nwb file found in session folder!")
+
+    from beneuro_data.trialdata_formatting import format_nwb_into_trialdata
+    nwbfile_path = nwbfiles[0].absolute()
+    format_nwb_into_trialdata(
+        nwbfile_path,
+        task_format
+    )
+
+
+@app.command()
 def to_nwb(
     local_session_path: Annotated[
         Path,
