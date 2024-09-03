@@ -84,22 +84,20 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[DeepDict] = None,
         stub_test: bool = False,
+        use_default_fps: bool = True,
     ):
 
-        # Commenting this for now since theoretically cameras dont need
-        # allignment
-        # try:
-        #     timestamps = self.get_original_timestamps()
-        #     starting_time = None
-        #     rate = None
-        # except:
-            # if we can't get the timestamps from spikeglx for whatever reason
-            # then just assume that the frames come with DEFAULT_FPS
-            # and that the first one is at t=0 which should be true
+        # Allignment: As cameras automatically start recording, I am setting
+        # the default option to be starting_time=0.0 and DEFAULT_FPS
+        if use_default_fps:
+            timestamps = None
+            starting_time = 0.0
+            rate = float(DEFAULT_FPS)
 
-        timestamps = None
-        starting_time = 0.0
-        rate = float(DEFAULT_FPS)
+        elif not use_default_fps:
+            timestamps = self.get_original_timestamps()
+            starting_time = None
+            rate = None
 
         keypoint_series_objects = []
         for keypoint_name in self.keypoint_names:
