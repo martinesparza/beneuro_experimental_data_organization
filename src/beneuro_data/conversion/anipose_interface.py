@@ -16,8 +16,6 @@ from beneuro_data.data_validation import \
     _find_spikeglx_recording_folders_in_session
 from beneuro_data.spike_sorting import get_ap_stream_names
 
-DEFAULT_FPS = 100
-
 
 class AniposeInterface(BaseTemporalAlignmentInterface):
     keypoint_names = [
@@ -56,8 +54,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
 
         self.csv_path = Path(csv_path)
         self.raw_session_path = Path(raw_session_path)
-
         self.pose_data = self.load_anipose_from_csv()
+        self.default_fps = 100
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         behavior_module = nwbfile.processing.get("behavior")
@@ -92,7 +90,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         if use_default_fps:
             timestamps = None
             starting_time = 0.0
-            rate = float(DEFAULT_FPS)
+            rate = float(self.default_fps)
 
         elif not use_default_fps:
             timestamps = self.get_original_timestamps()
