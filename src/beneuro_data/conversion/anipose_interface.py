@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 from typing import Optional
 
@@ -148,6 +149,11 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         """
         Load the array containing the pose estimation from the HDF5 output of sleap-anipose
         """
+        warnings.warn(
+            "load_anipose_from_h5() is deprecated and will be removed in a "
+            "future version. Please use load_anipose_from_csv() instead.",
+            DeprecationWarning, stacklevel=2
+        )
         with h5py.File(self.h5_path, "r") as file:
             assert file["tracks"].shape[1] == 1
             pose_data = file["tracks"][:, 0, :, :]
