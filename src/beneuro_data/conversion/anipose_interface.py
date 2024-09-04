@@ -155,7 +155,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
 
         return pose_data
 
-    def load_anipose_from_csv(self):
+    def load_anipose_from_csv(self) -> pd.DataFrame:
         pose_data = pd.read_csv(self.csv_path)
         return pose_data
 
