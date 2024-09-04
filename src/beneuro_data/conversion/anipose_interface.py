@@ -87,8 +87,9 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         use_default_fps: bool = True,
     ):
 
-        # Allignment: As cameras automatically start recording, I am setting
-        # the default option to be starting_time=0.0 and DEFAULT_FPS
+        # Alignment: As cameras start recording when PyControl sends them the signal at t=0,
+        # and in theory sends a signal with DEFAULT_FPS frequency, set the default option for the
+        # timing of the frames to use `starting_time` and `rate` instead of explicit timestamps.
         if use_default_fps:
             timestamps = None
             starting_time = 0.0
@@ -156,7 +157,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
 
         return pose_data
 
-    def load_anipose_from_csv(self):
+    def load_anipose_from_csv(self) -> pd.DataFrame:
         pose_data = pd.read_csv(self.csv_path)
         return pose_data
 
