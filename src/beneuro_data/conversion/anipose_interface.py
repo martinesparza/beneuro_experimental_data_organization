@@ -57,7 +57,6 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         self.csv_path = Path(csv_path)
         self.raw_session_path = Path(raw_session_path)
 
-        # self.pose_data = self.load_anipose_from_h5()
         self.pose_data = self.load_anipose_from_csv()
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
