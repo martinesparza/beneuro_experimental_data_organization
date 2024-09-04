@@ -61,7 +61,6 @@ def _try_adding_profile_to_source_data(source_data: dict, raw_session_path: Path
 def _try_adding_anipose_to_source_data(
     source_data: dict, processed_session_path: Path, raw_session_path: Path
 ):
-    # h5_paths = list(processed_session_path.glob("**/*_pose_estimation.h5"))
     csv_paths = list(processed_session_path.glob("**/*3dpts_angles.csv"))
 
     if len(csv_paths) == 0:
