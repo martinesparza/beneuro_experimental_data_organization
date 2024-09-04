@@ -126,7 +126,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                     (angle_array, np.zeros((angle_array.shape[0], 1))),
                     axis=1
                 ),
-                description='Angle information. Second dimension is nans.',
+                description='Angle information. Second dimension is zeros since since minimum'
+                            ' 2D array is needed for PoseEstimationSeries',
                 unit="a.u.",  # TODO
                 reference_frame="(0, 0, 0) is what?",  # TODO
                 timestamps=timestamps,
