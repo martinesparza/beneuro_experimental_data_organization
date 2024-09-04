@@ -24,6 +24,7 @@ class ParsedNWBData:
         with NWBHDF5IO(nwbpath, mode="r") as io:
             self.nwbfile = io.read()
             self.pycontrol_output = self.parse_nwb_pycontrol_output()
+            self.anipose_data = self.parse_anipose_output()
 
     def parse_nwb_pycontrol_output(self):
         """Parse pycontrol output from behavioural processing module of .nwb file
@@ -70,6 +71,9 @@ class ParsedNWBData:
                     ascending=True
                 ).reset_index(drop=True)
         return behav_dict
+
+    def parse_anipose_output(self):
+        return
 
 
 def format_nwb_into_trialdata(
