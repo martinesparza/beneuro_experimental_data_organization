@@ -60,7 +60,7 @@ class BeNeuroConverter(NWBConverter):
             "session_path" : str(session_folder_path),
         },
         Anipose = {
-            "h5_path" : str(path_to_pose_estimation_h5_file),
+            "csv_path" : str(path_to_pose_estimation_csv_file),
             "raw_session_path" : str(session_folder_path),
         },
     )
