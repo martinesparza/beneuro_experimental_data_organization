@@ -4,7 +4,7 @@ import pytest
 
 from beneuro_data.conversion.anipose_interface import AniposeInterface
 
-TEST_DIR_PATH = Path(__file__).parent
+TEST_DIR_PATH = Path(__file__).parent.parent
 
 
 @pytest.mark.processing
