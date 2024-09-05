@@ -167,6 +167,10 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         return pose_data
 
     def load_anipose_from_csv(self) -> pd.DataFrame:
+        """
+        Load pose estimation results from a CSV file where each keypoint and angle
+        has its own column.
+        """
         pose_data = pd.read_csv(self.csv_path)
         return pose_data
 
