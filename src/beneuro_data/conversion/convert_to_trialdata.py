@@ -1,29 +1,26 @@
-"""
-Arrange data from .nwb to trialdata format. Steps:
-
-1. Open nwb file
-2. Load events data
-3. Load keypoints
-4. Load spike data
-
-Arrange
-"""
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from pynwb import NWBHDF5IO
 from pynwb.behavior import SpatialSeries, TimeSeries
+from pynwb.misc import Units
 from ndx_pose.pose import PoseEstimationSeries
 
 
-def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries):
+def parse_pynwb_units(units: Units):
+    breakpoint()
+    return None
+
+
+def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
     """Parse pose estimation series data from anipose output
 
     Args:
-        pose_est_series:
+        pose_est_series (PoseEstimationSeries): ndx_pose object to parse
 
     Returns:
+        df (pd.DataFrame): contains x, y, z or angle and timestamps.
 
     """
     if pose_est_series.data[:].shape[1] == 3:
@@ -32,8 +29,8 @@ def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries):
         # If this is true we assume we are dealing with angle data
         colnames = ['angle']
     else:
-        raise ValueError(f"Shape {pose_est_series.data[:].shape} is not supported by pynwb. "
-                         f"Please provide a valid PoseEstimationSeries object")
+        raise ValueError(f"Shape {pose_est_series.data[:].shape} is not supported by pynwb."
+                         f" Please provide a valid PoseEstimationSeries object")
 
     df = pd.DataFrame()
     for i, col in enumerate(colnames):
@@ -46,14 +43,14 @@ def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries):
     return df
 
 
-def parse_spatial_series(spatial_series: SpatialSeries):
+def parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
     """Parse data and timestamps of a SpatialSeries .pynwb object
 
     Args:
         spatial_series (SpatialSeries): pynwb object to parse
 
     Returns:
-
+        df (pd.DataFrame): contains x, y, z and timestamps.
     """
     if spatial_series.data[:].shape[1] == 2:
         colnames = ['x', 'y']
@@ -72,10 +69,6 @@ def parse_spatial_series(spatial_series: SpatialSeries):
     return df
 
 
-def parse_time_series(time_series: TimeSeries):
-    pass
-
-
 class ParsedNWBFile:
     """
     Class to parse .nwb folders before arrangement into task-specific
@@ -92,14 +85,13 @@ class ParsedNWBFile:
             # Pycontrol outputs
             self.pycontrol_states = self.parse_nwb_pycontrol_states()
             self.pycontrol_events = self.parse_nwb_pycontrol_events()
-            self.ball_position = self.parse_ball_position()
+            self.pycontrol_motion_sensors = self.parse_motion_sensors()
 
             # Anipose data
             self.anipose_data = self.parse_anipose_output()
 
             # Spiking data
             self.spike_data = self.parse_ephys_data()
-
 
     def parse_nwb_pycontrol_states(self):
         """Parse pycontrol output from behavioural processing module of .nwb file
@@ -117,7 +109,7 @@ class ParsedNWBFile:
         df = pd.DataFrame(data_dict)
         return df
 
-    def parse_nwb_pycontrol_events(self):
+    def parse_nwb_pycontrol_events(self) -> pd.DataFrame:
         print("Parsing pycontrol events")
 
         behav_events_time_series = self.behav_module['behavioral_events'].time_series['behavioral events']
@@ -152,12 +144,12 @@ class ParsedNWBFile:
 
         return df_events
 
-    def parse_ball_position(self):
-        print("Parsing ball position")
+    def parse_motion_sensors(self) -> pd.DataFrame:
+        print("Parsing motion sensors")
         ball_position_spatial_series = self.behav_module['Position'].spatial_series['Ball position']
         return parse_spatial_series(ball_position_spatial_series)
 
-    def parse_anipose_output(self):
+    def parse_anipose_output(self) -> dict:
         print("Parsing anipose data")
         anipose_data_dict = self.behav_module['Pose estimation'].pose_estimation_series
 
@@ -167,13 +159,17 @@ class ParsedNWBFile:
 
         return parsed_anipose_data_dict
 
+    def parse_ephys_data(self):
+        print(f"Parsing ephys data. Found probes {list(self.ephys_module.keys())}")
+        for probe in self.ephys_module.keys():
+            parsed_units = parse_pynwb_units(self.ephys_module[probe])
+        return
+
     def run_conversion(self):
         pass
 
-    def parse_ephys_data(self):
+    def save(self):
         pass
-
-
 
 
 def convert_to_trialdata(
@@ -183,13 +179,13 @@ def convert_to_trialdata(
 
     Args:
         nwbfile_path:
-        task_format:
 
     Returns:
 
     """
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
+    parsed_nwbfile.save()
 
     breakpoint()
     return
