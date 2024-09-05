@@ -7,19 +7,23 @@ import numpy as np
 import pandas as pd
 import spikeinterface.extractors as se
 from ndx_pose import PoseEstimation, PoseEstimationSeries
-from neuroconv.basetemporalalignmentinterface import \
+from neuroconv.basetemporalalignmentinterface import (
     BaseTemporalAlignmentInterface
+)
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
 from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 
-from beneuro_data.data_validation import \
+from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session
+)
 from beneuro_data.spike_sorting import get_ap_stream_names
 
 
 class AniposeInterface(BaseTemporalAlignmentInterface):
-    keypoint_names = [
+    DEFAULT_FPS = 100
+
+    keypoint_names = (
         "shoulder_center",
         "left_shoulder",
         "left_paw",
@@ -39,16 +43,16 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         "left_elbow",
         "left_wrist",
         "right_wrist",
-    ]
+    )
 
-    angles = [
+    angle_names = (
         "left_elbow_angle",
         "right_elbow_angle",
         "left_knee_angle",
         "right_knee_angle",
         "left_ankle_angle",
         "right_ankle_angle",
-    ]
+    )
 
     def __init__(self, csv_path: FilePathType, raw_session_path: FilePathType):
         super().__init__()
@@ -56,7 +60,6 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         self.csv_path = Path(csv_path)
         self.raw_session_path = Path(raw_session_path)
         self.pose_data = self.load_anipose_from_csv()
-        self.default_fps = 100
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         behavior_module = nwbfile.processing.get("behavior")
@@ -84,14 +87,13 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         stub_test: bool = False,
         use_default_fps: bool = True,
     ):
-
         # Alignment: As cameras start recording when PyControl sends them the signal at t=0,
         # and in theory sends a signal with DEFAULT_FPS frequency, set the default option for the
         # timing of the frames to use `starting_time` and `rate` instead of explicit timestamps.
         if use_default_fps:
             timestamps = None
             starting_time = 0.0
-            rate = float(self.default_fps)
+            rate = float(self.DEFAULT_FPS)
 
         elif not use_default_fps:
             timestamps = self.get_original_timestamps()
@@ -100,13 +102,12 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
 
         keypoint_series_objects = []
         for keypoint_name in self.keypoint_names:
-
             keypoint_series = PoseEstimationSeries(
                 name=keypoint_name,
                 description=f"Marker placed at {keypoint_name.replace('_', ' ')}",
-                data=self.pose_data[[f"{keypoint_name}_x",
-                                     f"{keypoint_name}_y",
-                                     f"{keypoint_name}_z"]].to_numpy(),
+                data=self.pose_data[
+                    [f"{keypoint_name}_x", f"{keypoint_name}_y", f"{keypoint_name}_z"]
+                ].to_numpy(),
                 unit="a.u.",  # TODO
                 reference_frame="(0, 0, 0) is what?",  # TODO
                 timestamps=timestamps,
@@ -117,16 +118,15 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
             )
             keypoint_series_objects.append(keypoint_series)
 
-        for angle_name in self.angles:
+        for angle_name in self.angle_names:
             angle_array = self.pose_data[[f"{angle_name}"]].to_numpy()
             angle_series = PoseEstimationSeries(
                 name=angle_name,
                 data=np.concatenate(
-                    (angle_array, np.zeros((angle_array.shape[0], 1))),
-                    axis=1
+                    (angle_array, np.zeros((angle_array.shape[0], 1))), axis=1
                 ),
-                description='Angle information. Second dimension is zeros since since minimum'
-                            ' 2D array is needed for PoseEstimationSeries',
+                description="Angle information. Second dimension is zeros since since minimum"
+                " 2D array is needed for PoseEstimationSeries",
                 unit="a.u.",  # TODO
                 reference_frame="(0, 0, 0) is what?",  # TODO
                 timestamps=timestamps,
@@ -152,7 +152,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         warnings.warn(
             "load_anipose_from_h5() is deprecated and will be removed in a "
             "future version. Please use load_anipose_from_csv() instead.",
-            DeprecationWarning, stacklevel=2
+            DeprecationWarning,
+            stacklevel=2,
         )
         with h5py.File(self.h5_path, "r") as file:
             assert file["tracks"].shape[1] == 1
