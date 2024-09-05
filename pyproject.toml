@@ -44,3 +44,6 @@ filterwarnings = [
     "ignore:.*No PyControl task folder found*:UserWarning",
     "ignore:.*More than one raw ephys recordings found*:UserWarning",
 ]
+markers = [
+    "processing: These tests are only required when installing with the processing modules.",
+]
