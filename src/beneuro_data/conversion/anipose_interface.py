@@ -54,12 +54,17 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         "right_ankle_angle",
     )
 
-    def __init__(self, csv_path: FilePathType, raw_session_path: FilePathType):
+    def __init__(
+        self, csv_path: FilePathType, raw_session_path: Optional[FilePathType] = None
+    ):
         super().__init__()
 
         self.csv_path = Path(csv_path)
-        self.raw_session_path = Path(raw_session_path)
         self.pose_data = self.load_anipose_from_csv()
+
+        # If we're not reading the timestamps from SpikeGLX, this is not required
+        if raw_session_path is not None:
+            self.raw_session_path = Path(raw_session_path)
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         behavior_module = nwbfile.processing.get("behavior")
@@ -173,6 +178,13 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         """
         Load the synchronization channel from
         """
+        if self.raw_session_path is None:
+            raise ValueError(
+                "Cannot load timestamps from SpikeGLX recording because "
+                "the path to the session's raw data was not provided, "
+                "most likely when creating BeNeuroConverter."
+            )
+
         stream_names = get_ap_stream_names(
             _find_spikeglx_recording_folders_in_session(self.raw_session_path)[0]
         )
