@@ -7,6 +7,7 @@ from beneuro_data.conversion.anipose_interface import AniposeInterface
 TEST_DIR_PATH = Path(__file__).parent
 
 
+@pytest.mark.processing
 @pytest.mark.parametrize("csv_name", ["M030_2024_04_12_09_40_3dpts_angles.csv"])
 def test_anipose_csv_loading(csv_name):
     csv_path = TEST_DIR_PATH / "test_data" / csv_name
