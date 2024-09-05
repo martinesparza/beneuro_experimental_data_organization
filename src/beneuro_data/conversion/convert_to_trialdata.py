@@ -13,7 +13,33 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from pynwb import NWBHDF5IO
+from pynwb.behavior import SpatialSeries
 
+
+def parse_spatial_series(spatial_series: SpatialSeries):
+    """Parse data and timestamps of a SpatialSeries .pynwb object
+
+    Args:
+        spatial_series (SpatialSeries): pynwb object to parse
+
+    Returns:
+
+    """
+    if spatial_series.data[:].shape[1] == 2:
+        colnames = ['x', 'y']
+    elif spatial_series.data[:].shape[1] == 3:
+        colnames = ['x', 'y', 'z']
+    else:
+        raise ValueError(f"Shape {spatial_series.data[:].shape} is not supported by pynwb. "
+                         f"Please provide a valid SpatialSeries object")
+
+    df = pd.DataFrame()
+    for i, col in enumerate(colnames):
+        df[col] = spatial_series.data[:, i]
+
+    df['timestamps'] = spatial_series.timestamps[:]
+
+    return df
 
 class ParsedNWBFile:
     """
@@ -38,6 +64,7 @@ class ParsedNWBFile:
 
             # Spiking data
             self.spike_data = self.parse_ephys_data()
+
 
     def parse_nwb_pycontrol_states(self):
         """Parse pycontrol output from behavioural processing module of .nwb file
@@ -91,7 +118,8 @@ class ParsedNWBFile:
         return df_events
 
     def parse_ball_position(self):
-        pass
+        ball_position_spatial_series = self.behav_module['Position'].spatial_series['Ball position']
+        return parse_spatial_series(ball_position_spatial_series)
 
     def parse_anipose_output(self):
         return
