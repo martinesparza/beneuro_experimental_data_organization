@@ -13,7 +13,37 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from pynwb import NWBHDF5IO
-from pynwb.behavior import SpatialSeries
+from pynwb.behavior import SpatialSeries, TimeSeries
+from ndx_pose.pose import PoseEstimationSeries
+
+
+def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries):
+    """Parse pose estimation series data from anipose output
+
+    Args:
+        pose_est_series:
+
+    Returns:
+
+    """
+    if pose_est_series.data[:].shape[1] == 3:
+        colnames = ['x', 'y', 'z']
+    elif pose_est_series.data[:].shape[1] == 2 and all(pose_est_series.data[:, 1] == 0):
+        # If this is true we assume we are dealing with angle data
+        colnames = ['angle']
+    else:
+        raise ValueError(f"Shape {pose_est_series.data[:].shape} is not supported by pynwb. "
+                         f"Please provide a valid PoseEstimationSeries object")
+
+    df = pd.DataFrame()
+    for i, col in enumerate(colnames):
+        df[col] = pose_est_series.data[:, i]
+
+    timestamps = np.arange(pose_est_series.data[:].shape[0])
+    timestamps = timestamps / pose_est_series.rate + pose_est_series.starting_time
+    df['timestamps'] = timestamps
+
+    return df
 
 
 def parse_spatial_series(spatial_series: SpatialSeries):
@@ -40,6 +70,11 @@ def parse_spatial_series(spatial_series: SpatialSeries):
     df['timestamps'] = spatial_series.timestamps[:]
 
     return df
+
+
+def parse_time_series(time_series: TimeSeries):
+    pass
+
 
 class ParsedNWBFile:
     """
@@ -118,11 +153,19 @@ class ParsedNWBFile:
         return df_events
 
     def parse_ball_position(self):
+        print("Parsing ball position")
         ball_position_spatial_series = self.behav_module['Position'].spatial_series['Ball position']
         return parse_spatial_series(ball_position_spatial_series)
 
     def parse_anipose_output(self):
-        return
+        print("Parsing anipose data")
+        anipose_data_dict = self.behav_module['Pose estimation'].pose_estimation_series
+
+        parsed_anipose_data_dict = {}
+        for key in anipose_data_dict.keys():
+            parsed_anipose_data_dict[key] = parse_pose_estimation_series(anipose_data_dict[key])
+
+        return parsed_anipose_data_dict
 
     def run_conversion(self):
         pass
