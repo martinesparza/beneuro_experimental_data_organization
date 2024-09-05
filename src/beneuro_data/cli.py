@@ -29,19 +29,10 @@ def nwb_to_trialdata(
             help="Path to session directory"
         ),
     ],
-    task_format: Annotated[
-        str,
-        typer.Argument(
-            help="Task format to use. E.g., 'earthquake', 'bci', etc"
-        )
-    ],
-    verbose: Annotated[
-        bool,
-        typer.Option(
-            help="Verbosity of formatting process"
-        )
-    ] = False
 ):
+    from beneuro_data.conversion.convert_to_trialdata import (
+        convert_to_trialdata)
+
     config = _load_config()
     if not local_session_path.absolute().is_dir():
         raise ValueError("Session path must be a directory.")
@@ -56,11 +47,11 @@ def nwb_to_trialdata(
     elif not nwbfiles:
         raise FileNotFoundError("No .nwb file found in session folder!")
 
-    from beneuro_data.trialdata_formatting import format_nwb_into_trialdata
     nwbfile_path = nwbfiles[0].absolute()
-    format_nwb_into_trialdata(
+
+    # Run conversion
+    convert_to_trialdata(
         nwbfile_path,
-        task_format
     )
 
 
