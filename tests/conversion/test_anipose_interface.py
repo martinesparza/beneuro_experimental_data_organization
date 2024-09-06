@@ -17,5 +17,5 @@ def test_anipose_csv_loading(csv_name):
         for postfix in ["x", "y", "z"]:
             assert f"{kp_name}_{postfix}" in interface.pose_data.columns
 
-    for angle_name in AniposeInterface.angle_names:
+    for angle_name, _ in AniposeInterface.angle_names_and_references:
         assert angle_name in interface.pose_data.columns
