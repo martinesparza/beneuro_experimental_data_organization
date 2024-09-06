@@ -45,13 +45,13 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         "right_wrist",
     )
 
-    angle_names = (
-        "left_elbow_angle",
-        "right_elbow_angle",
-        "left_knee_angle",
-        "right_knee_angle",
-        "left_ankle_angle",
-        "right_ankle_angle",
+    angle_names_and_references = (
+        ("left_elbow_angle",  ["left_shoulder", "left_elbow", "left_wrist"]),
+        ("right_elbow_angle", ["right_shoulder", "right_elbow", "right_wrist"]),
+        ("left_knee_angle", ["hip_center", "left_knee", "left_ankle"]),
+        ("right_knee_angle", ["hip_center", "right_knee", "right_ankle"]),
+        ("left_ankle_angle", ["left_knee", "left_ankle", "left_foot"]),
+        ("right_ankle_angle", ["right_knee", "right_ankle", "right_foot"])
     )
 
     def __init__(
@@ -113,8 +113,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                 data=self.pose_data[
                     [f"{keypoint_name}_x", f"{keypoint_name}_y", f"{keypoint_name}_z"]
                 ].to_numpy(),
-                unit="a.u.",  # TODO
-                reference_frame="(0, 0, 0) is what?",  # TODO
+                unit="mm",
+                reference_frame="(0, 0, 0) is hip_center",
                 timestamps=timestamps,
                 starting_time=starting_time,
                 rate=rate,
@@ -123,7 +123,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
             )
             keypoint_series_objects.append(keypoint_series)
 
-        for angle_name in self.angle_names:
+        for angle_name, angle_reference in self.angle_names_and_references:
             angle_array = self.pose_data[[f"{angle_name}"]].to_numpy()
             angle_series = PoseEstimationSeries(
                 name=angle_name,
@@ -132,8 +132,8 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                 ),
                 description="Angle information. Second dimension is zeros since since minimum"
                 " 2D array is needed for PoseEstimationSeries",
-                unit="a.u.",  # TODO
-                reference_frame="(0, 0, 0) is what?",  # TODO
+                unit="degrees",
+                reference_frame=f"Triangulation of keypoints: {angle_reference}",
                 timestamps=timestamps,
                 starting_time=starting_time,
                 rate=rate,
