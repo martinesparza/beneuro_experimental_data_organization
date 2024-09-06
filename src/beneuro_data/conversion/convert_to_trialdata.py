@@ -8,9 +8,35 @@ from pynwb.misc import Units
 from ndx_pose.pose import PoseEstimationSeries
 
 
-def parse_pynwb_units(units: Units):
-    breakpoint()
-    return None
+def bin_spikes(spike_times: np.array, bin_size: float, end_time: float) -> np.array:
+
+    start_time = 0  # This is hardcoded since its aligned in nwb conversion
+    number_of_bins = int(np.ceil((end_time - start_time) / bin_size))
+
+    # Initialize the binned spikes array
+    binned_spikes = np.zeros(number_of_bins, dtype=int)
+
+    # Populate the binned spikes array
+    for spike_time in spike_times:
+        if start_time <= spike_time < end_time:
+            bin_index = int((spike_time - start_time) / bin_size)
+            binned_spikes[bin_index] += 1
+
+    return binned_spikes
+
+
+def parse_pynwb_units(units: Units, bin_size: float):
+
+    for unit in units.id[:]:
+        binned_spikes = bin_spikes(
+            spike_times=units.get_unit_spike_times(0),
+            bin_size=bin_size,
+            end_time=np.max(units.spike_times[:])
+        )
+
+        breakpoint()
+
+    return
 
 
 def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
@@ -91,6 +117,7 @@ class ParsedNWBFile:
             self.anipose_data = self.parse_anipose_output()
 
             # Spiking data
+            self.bin_size = 0.01  # 10 ms bins hardcoded for now
             self.spike_data = self.parse_ephys_data()
 
     def parse_nwb_pycontrol_states(self):
@@ -161,14 +188,20 @@ class ParsedNWBFile:
 
     def parse_ephys_data(self):
         print(f"Parsing ephys data. Found probes {list(self.ephys_module.keys())}")
+        ephys_data_dict = {}
         for probe in self.ephys_module.keys():
-            parsed_units = parse_pynwb_units(self.ephys_module[probe])
-        return
+            ephys_data_dict[probe] = parse_pynwb_units(
+                units = self.ephys_module[probe],
+                bin_size = self.bin_size
+            )
+        return ephys_data_dict
 
     def run_conversion(self):
+        # TODO
         pass
 
-    def save(self):
+    def save_to_csv(self):
+        # TODO
         pass
 
 
@@ -185,7 +218,7 @@ def convert_to_trialdata(
     """
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
-    parsed_nwbfile.save()
+    parsed_nwbfile.save_to_csv()
 
     breakpoint()
     return
