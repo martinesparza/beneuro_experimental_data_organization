@@ -1,4 +1,5 @@
 from copy import deepcopy
+import warnings
 from pathlib import Path
 from typing import Literal, Optional
 
@@ -8,6 +9,7 @@ from neuroconv.tools.spikeinterface import add_sorting_to_nwbfile
 from neuroconv.utils import DeepDict
 from pydantic import DirectoryPath
 from pynwb import NWBFile
+import probeinterface as pi
 
 
 class MultiProbeKiloSortInterface(KiloSortSortingInterface):
@@ -34,11 +36,60 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         for kilosort_interface in self.kilosort_interfaces:
             kilosort_interface.set_aligned_starting_time(aligned_starting_time)
 
+    def add_probe_information_to_nwb(self, nwbfile):
+        raw_recording_path = Path(
+            str(self.processed_recording_path).replace("processed", "raw"))
+        meta_files = list(raw_recording_path.rglob("*/*ap.meta"))
+
+        for meta_file, probe_name in zip(meta_files, self.probe_names):
+            probe = pi.read_spikeglx(meta_file)  # Load probe object
+
+            if probe.get_shank_count() == 1:  # Set shank ids
+                probe.set_shank_ids(np.full((probe.get_contact_count(), ), 1))
+            else:
+                warnings.warn(
+                    "More than one shank. You are probably using Neuropixels 2.0. This is not "
+                    "yet implemented in bnd"
+                )
+
+            nwbfile.create_device(
+                name=probe_name,
+                description=probe.annotations["model_name"],  # Neuropixels 1.0
+                manufacturer=probe.annotations["manufacturer"],
+            )
+            nwbfile.create_electrode_group(
+                name=probe_name,
+                description=f'{probe.annotations["model_name"]}. Location corresponds to the targeted brain region '
+                            f'and position is the location of tip relative to bregma in stereotactic coordinates',
+                location="??",  # TODO
+                device=nwbfile.devices[probe_name],
+                position=[0, 0, 0, ],  # TODO
+            )
+
+            for contact_position, contact_id in zip(probe.contact_positions, probe.contact_ids):
+                x, y = contact_position
+                z = 0.0
+                # breakpoint()
+                contact_id = int(contact_id.split('e')[1:][0])
+
+                nwbfile.add_electrode(
+                    group=nwbfile.electrode_groups[probe_name],
+                    x=float(x),
+                    y=float(y),
+                    z=z,
+                    id=contact_id,
+                    location="??",  # TODO brain region
+                    reference=f"Tip of the probe"  # TODO: Make this dynamic
+                )
+
     def add_to_nwbfile(
         self,
         nwbfile: NWBFile,
         metadata: Optional[DeepDict] = None,
     ):
+
+        self.add_probe_information_to_nwb(nwbfile)
+
         # Kilosort output will be saved in processing and not units
         # units is reserved for the units curated by Phy
         for probe_name, kilosort_interface, kilosort_folder_path in zip(
