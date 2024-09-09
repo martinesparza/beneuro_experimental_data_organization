@@ -3,15 +3,14 @@ from dataclasses import dataclass
 from typing import Optional, Type
 
 import pytest
+from test_data_validation import (
+    EXTENSIONS_TO_RENAME_AND_UPLOAD,
+    WHITELISTED_FILES_IN_ROOT,
+    _prepare_directory_structure,
+)
 
 from beneuro_data.data_transfer import sync_subject_dir, upload_raw_session
 from beneuro_data.data_validation import WrongNumberOfFilesError
-
-from test_data_validation import (
-    _prepare_directory_structure,
-    WHITELISTED_FILES_IN_ROOT,
-    EXTENSIONS_TO_RENAME_AND_UPLOAD,
-)
 
 TEST_DIR_PATH = os.path.dirname(__file__)
 UPLOAD_RAW_SESSION_YAML_FOLDER = os.path.join(

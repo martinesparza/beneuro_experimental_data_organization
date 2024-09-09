@@ -1,8 +1,7 @@
 from dataclasses import dataclass
-
-import pytest
 from pathlib import Path
 
+import pytest
 from test_data_validation import _prepare_directory_structure
 
 from beneuro_data.query_sessions import get_last_session_path

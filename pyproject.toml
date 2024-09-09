@@ -38,6 +38,12 @@ bnd = "beneuro_data.cli:app"
 [tool.black]
 line-length = 92
 
+[tool.ruff]
+line-length = 92
+
+[tool.isort]
+profile = "black"
+
 [tool.pytest.ini_options]
 filterwarnings = [
     "ignore:.*No correctly named video folder found*:UserWarning",

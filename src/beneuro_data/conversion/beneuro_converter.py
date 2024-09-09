@@ -3,15 +3,14 @@ from pathlib import Path
 import numpy as np
 import spikeinterface.extractors as se
 from neuroconv import NWBConverter
-from neuroconv.datainterfaces import \
-    SpikeGLXRecordingInterface  # PhySortingInterface
+from neuroconv.datainterfaces import SpikeGLXRecordingInterface  # PhySortingInterface
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
 
-from beneuro_data.conversion.animal_profile_interface import \
-    AnimalProfileInterface
+from beneuro_data.conversion.animal_profile_interface import AnimalProfileInterface
 from beneuro_data.conversion.anipose_interface import AniposeInterface
-from beneuro_data.conversion.multiprobe_kilosort_interface import \
-    MultiProbeKiloSortInterface
+from beneuro_data.conversion.multiprobe_kilosort_interface import (
+    MultiProbeKiloSortInterface,
+)
 from beneuro_data.conversion.pycontrol_interface import PyControlInterface
 
 

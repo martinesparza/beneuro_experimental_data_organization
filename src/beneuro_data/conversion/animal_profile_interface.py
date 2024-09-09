@@ -8,8 +8,7 @@ from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 from pynwb.file import Subject
 
-from beneuro_data.data_validation import (EXPECTED_DATE_FORMAT,
-                                          validate_session_path)
+from beneuro_data.data_validation import EXPECTED_DATE_FORMAT, validate_session_path
 
 
 class AnimalProfileInterface(BaseDataInterface):

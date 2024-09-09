@@ -1,17 +1,14 @@
-import pytest
-
 import os
-import shutil
 import pathlib
+import shutil
 from dataclasses import dataclass
-from typing import Type, Optional
+from typing import Optional, Type
 
+import pytest
+from generate_directory_structure_test_cases import create_directory_structure_from_dict
 from ruamel.yaml import YAML
 
-from beneuro_data.data_validation import validate_raw_session, WrongNumberOfFilesError
-
-from generate_directory_structure_test_cases import create_directory_structure_from_dict
-
+from beneuro_data.data_validation import WrongNumberOfFilesError, validate_raw_session
 
 TEST_DIR_PATH = os.path.dirname(__file__)
 DIRECTORY_STRUCTURE_YAML_FOLDER = os.path.join(

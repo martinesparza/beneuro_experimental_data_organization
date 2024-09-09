@@ -7,16 +7,12 @@ import numpy as np
 import pandas as pd
 import spikeinterface.extractors as se
 from ndx_pose import PoseEstimation, PoseEstimationSeries
-from neuroconv.basetemporalalignmentinterface import (
-    BaseTemporalAlignmentInterface
-)
+from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
 from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 
-from beneuro_data.data_validation import (
-    _find_spikeglx_recording_folders_in_session
-)
+from beneuro_data.data_validation import _find_spikeglx_recording_folders_in_session
 from beneuro_data.spike_sorting import get_ap_stream_names
 
 
@@ -46,12 +42,12 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
     )
 
     angle_names_and_references = (
-        ("left_elbow_angle",  ["left_shoulder", "left_elbow", "left_wrist"]),
+        ("left_elbow_angle", ["left_shoulder", "left_elbow", "left_wrist"]),
         ("right_elbow_angle", ["right_shoulder", "right_elbow", "right_wrist"]),
         ("left_knee_angle", ["hip_center", "left_knee", "left_ankle"]),
         ("right_knee_angle", ["hip_center", "right_knee", "right_ankle"]),
         ("left_ankle_angle", ["left_knee", "left_ankle", "left_foot"]),
-        ("right_ankle_angle", ["right_knee", "right_ankle", "right_foot"])
+        ("right_ankle_angle", ["right_knee", "right_ankle", "right_foot"]),
     )
 
     def __init__(
@@ -114,7 +110,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                     [f"{keypoint_name}_x", f"{keypoint_name}_y", f"{keypoint_name}_z"]
                 ].to_numpy(),
                 unit="mm",
-                reference_frame="(0, 0, 0) is hip_center",
+                reference_frame="(0, 0, 0) is hip_center's median across all frames",
                 timestamps=timestamps,
                 starting_time=starting_time,
                 rate=rate,

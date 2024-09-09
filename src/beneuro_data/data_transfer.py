@@ -1,6 +1,12 @@
-from pathlib import Path
 import warnings
+from pathlib import Path
 
+from beneuro_data.data_transfer_helpers import (
+    _check_list_of_files_before_copy,
+    _copy_list_of_files,
+    _source_to_dest,
+    _validate_session_is_raw_and_in_root,
+)
 from beneuro_data.data_validation import (
     validate_raw_behavioral_data_of_session,
     validate_raw_ephys_data_of_session,
@@ -11,12 +17,6 @@ from beneuro_data.extra_file_handling import (
     _find_extra_files_with_extensions,
     _find_whitelisted_files_in_root,
     rename_extra_files_in_session,
-)
-from beneuro_data.data_transfer_helpers import (
-    _source_to_dest,
-    _copy_list_of_files,
-    _check_list_of_files_before_copy,
-    _validate_session_is_raw_and_in_root,
 )
 from beneuro_data.validate_argument import validate_argument
 from beneuro_data.video_renaming import rename_raw_videos_of_session
