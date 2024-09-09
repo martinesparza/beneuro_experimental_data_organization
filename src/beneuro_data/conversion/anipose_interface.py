@@ -1,25 +1,25 @@
+import warnings
 from pathlib import Path
 from typing import Optional
 
 import h5py
 import numpy as np
+import pandas as pd
 import spikeinterface.extractors as se
 from ndx_pose import PoseEstimation, PoseEstimationSeries
-from neuroconv.basetemporalalignmentinterface import \
-    BaseTemporalAlignmentInterface
+from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
 from neuroconv.utils import DeepDict, FilePathType
 from pynwb import NWBFile
 
-from beneuro_data.data_validation import \
-    _find_spikeglx_recording_folders_in_session
+from beneuro_data.data_validation import _find_spikeglx_recording_folders_in_session
 from beneuro_data.spike_sorting import get_ap_stream_names
-
-DEFAULT_FPS = 100
 
 
 class AniposeInterface(BaseTemporalAlignmentInterface):
-    keypoint_names = [
+    DEFAULT_FPS = 100
+
+    keypoint_names = (
         "shoulder_center",
         "left_shoulder",
         "left_paw",
@@ -39,15 +39,28 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         "left_elbow",
         "left_wrist",
         "right_wrist",
-    ]
+    )
 
-    def __init__(self, h5_path: FilePathType, raw_session_path: FilePathType):
+    angle_names_and_references = (
+        ("left_elbow_angle", ["left_shoulder", "left_elbow", "left_wrist"]),
+        ("right_elbow_angle", ["right_shoulder", "right_elbow", "right_wrist"]),
+        ("left_knee_angle", ["hip_center", "left_knee", "left_ankle"]),
+        ("right_knee_angle", ["hip_center", "right_knee", "right_ankle"]),
+        ("left_ankle_angle", ["left_knee", "left_ankle", "left_foot"]),
+        ("right_ankle_angle", ["right_knee", "right_ankle", "right_foot"]),
+    )
+
+    def __init__(
+        self, csv_path: FilePathType, raw_session_path: Optional[FilePathType] = None
+    ):
         super().__init__()
 
-        self.h5_path = Path(h5_path)
-        self.raw_session_path = Path(raw_session_path)
+        self.csv_path = Path(csv_path)
+        self.pose_data = self.load_anipose_from_csv()
 
-        self.pose_data = self.load_anipose_from_h5()
+        # If we're not reading the timestamps from SpikeGLX, this is not required
+        if raw_session_path is not None:
+            self.raw_session_path = Path(raw_session_path)
 
     def _add_to_behavior_module(self, beh_obj, nwbfile: NWBFile) -> None:
         behavior_module = nwbfile.processing.get("behavior")
@@ -73,27 +86,31 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         nwbfile: NWBFile,
         metadata: Optional[DeepDict] = None,
         stub_test: bool = False,
+        use_default_fps: bool = True,
     ):
-        try:
+        # Alignment: As cameras start recording when PyControl sends them the signal at t=0,
+        # and in theory sends a signal with DEFAULT_FPS frequency, set the default option for the
+        # timing of the frames to use `starting_time` and `rate` instead of explicit timestamps.
+        if use_default_fps:
+            timestamps = None
+            starting_time = 0.0
+            rate = float(self.DEFAULT_FPS)
+
+        elif not use_default_fps:
             timestamps = self.get_original_timestamps()
             starting_time = None
             rate = None
-        except:
-            # if we can't get the timestamps from spikeglx for whatever reason
-            # then just assume that the frames come with DEFAULT_FPS
-            # and that the first one is at t=0 which should be true
-            timestamps = None
-            starting_time = 0.0
-            rate = float(DEFAULT_FPS)
 
         keypoint_series_objects = []
-        for i, keypoint_name in enumerate(self.keypoint_names):
+        for keypoint_name in self.keypoint_names:
             keypoint_series = PoseEstimationSeries(
                 name=keypoint_name,
                 description=f"Marker placed at {keypoint_name.replace('_', ' ')}",
-                data=self.pose_data[:, i, :],
-                unit="a.u.",  # TODO
-                reference_frame="(0, 0, 0) is what?",  # TODO
+                data=self.pose_data[
+                    [f"{keypoint_name}_x", f"{keypoint_name}_y", f"{keypoint_name}_z"]
+                ].to_numpy(),
+                unit="mm",
+                reference_frame="(0, 0, 0) is hip_center's median across all frames",
                 timestamps=timestamps,
                 starting_time=starting_time,
                 rate=rate,
@@ -101,6 +118,25 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
                 confidence_definition="Filled with nan because we don't have an estimate.",
             )
             keypoint_series_objects.append(keypoint_series)
+
+        for angle_name, angle_reference in self.angle_names_and_references:
+            angle_array = self.pose_data[[f"{angle_name}"]].to_numpy()
+            angle_series = PoseEstimationSeries(
+                name=angle_name,
+                data=np.concatenate(
+                    (angle_array, np.zeros((angle_array.shape[0], 1))), axis=1
+                ),
+                description="Angle information. Second dimension is zeros since since minimum"
+                " 2D array is needed for PoseEstimationSeries",
+                unit="degrees",
+                reference_frame=f"Triangulation of keypoints: {angle_reference}",
+                timestamps=timestamps,
+                starting_time=starting_time,
+                rate=rate,
+                confidence=np.full(self.n_frames, np.nan),
+                confidence_definition="Filled with nan because we don't have an estimate.",
+            )
+            keypoint_series_objects.append(angle_series)
 
         pose_estimation = PoseEstimation(
             name="Pose estimation",
@@ -114,10 +150,24 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         """
         Load the array containing the pose estimation from the HDF5 output of sleap-anipose
         """
+        warnings.warn(
+            "load_anipose_from_h5() is deprecated and will be removed in a "
+            "future version. Please use load_anipose_from_csv() instead.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         with h5py.File(self.h5_path, "r") as file:
             assert file["tracks"].shape[1] == 1
             pose_data = file["tracks"][:, 0, :, :]
 
+        return pose_data
+
+    def load_anipose_from_csv(self) -> pd.DataFrame:
+        """
+        Load pose estimation results from a CSV file where each keypoint and angle
+        has its own column.
+        """
+        pose_data = pd.read_csv(self.csv_path)
         return pose_data
 
     @property
@@ -128,6 +178,13 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         """
         Load the synchronization channel from
         """
+        if self.raw_session_path is None:
+            raise ValueError(
+                "Cannot load timestamps from SpikeGLX recording because "
+                "the path to the session's raw data was not provided, "
+                "most likely when creating BeNeuroConverter."
+            )
+
         stream_names = get_ap_stream_names(
             _find_spikeglx_recording_folders_in_session(self.raw_session_path)[0]
         )
