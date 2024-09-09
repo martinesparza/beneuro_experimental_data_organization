@@ -80,7 +80,6 @@ class BeNeuroConverter(NWBConverter):
         "PyControl": PyControlInterface,
         "AnimalProfile": AnimalProfileInterface,
         "Anipose": AniposeInterface,
-        # TODO "Neuropixels" : NeuropixelsInterface -- add probe location and information
     }
 
     def temporally_align_data_interfaces(self):
