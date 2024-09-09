@@ -1,19 +1,18 @@
-import pytest
-
+import os
 from dataclasses import dataclass
 from pathlib import Path
-import os
 from typing import Optional, Type
 
-from beneuro_data.extra_file_handling import (
-    _rename_whitelisted_files_in_root,
-    _rename_extra_files_with_extension,
-)
-
+import pytest
 from test_data_validation import (
     TEST_DIR_PATH,
     _prepare_directory_structure,
     validate_raw_session,
+)
+
+from beneuro_data.extra_file_handling import (
+    _rename_extra_files_with_extension,
+    _rename_whitelisted_files_in_root,
 )
 
 EXTRA_FILE_RENAMING_YAML_FOLDER = Path(TEST_DIR_PATH) / "extra_file_renaming_test_yamls"

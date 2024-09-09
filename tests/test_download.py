@@ -3,15 +3,14 @@ from dataclasses import dataclass
 from typing import Optional, Type
 
 import pytest
+from test_data_validation import (
+    EXTENSIONS_TO_RENAME_AND_UPLOAD,
+    WHITELISTED_FILES_IN_ROOT,
+    _prepare_directory_structure,
+)
 
 from beneuro_data.data_transfer import download_raw_session
 from beneuro_data.data_validation import WrongNumberOfFilesError
-
-from test_data_validation import (
-    _prepare_directory_structure,
-    WHITELISTED_FILES_IN_ROOT,
-    EXTENSIONS_TO_RENAME_AND_UPLOAD,
-)
 
 TEST_DIR_PATH = os.path.dirname(__file__)
 DOWNLOAD_RAW_SESSION_TEST_FOLDER = os.path.join(
@@ -83,7 +82,7 @@ session_download_test_cases = [
     # TODO not wanting to download bad behavior should not warn
     # the test itself is incorrect for this case
     # use data validation functions on both sides to compare list of files
-    #RawSessionDownloadTestCase(
+    # RawSessionDownloadTestCase(
     #    "M011_wrong_behavior.yaml",
     #    "M011_2023_04_04_16_00",
     #    None,
@@ -91,7 +90,7 @@ session_download_test_cases = [
     #    False,
     #    True,
     #    True,
-    #),
+    # ),
 ]
 
 

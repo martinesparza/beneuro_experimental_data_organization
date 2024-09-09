@@ -1,15 +1,14 @@
-import pytest
-
-from pathlib import Path
 import os
+from pathlib import Path
 
-from beneuro_data.video_renaming import rename_raw_videos_of_session
-from beneuro_data.data_validation import validate_raw_videos_of_session
-
+import pytest
 from test_data_validation import (
     DIRECTORY_STRUCTURE_YAML_FOLDER,
     _prepare_directory_structure,
 )
+
+from beneuro_data.data_validation import validate_raw_videos_of_session
+from beneuro_data.video_renaming import rename_raw_videos_of_session
 
 test_cases = [
     ("M011_wrong_video_filenames.yaml", "M011_2023_04_04_16_00"),

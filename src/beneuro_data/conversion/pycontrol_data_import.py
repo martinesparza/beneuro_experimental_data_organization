@@ -2,10 +2,11 @@
 # Copied from @JoannaChang's behavior_analysis repo
 
 import os
-import numpy as np
 import re
-from datetime import datetime
 from collections import namedtuple
+from datetime import datetime
+
+import numpy as np
 
 Event = namedtuple("Event", ["time", "name"])
 State = namedtuple("State", ["time", "name", "duration"])

@@ -2,17 +2,18 @@ import warnings
 from pathlib import Path
 from typing import Optional
 
-from beneuro_data.conversion.animal_profile_interface import \
-    AnimalProfileInterface
+from beneuro_data.conversion.animal_profile_interface import AnimalProfileInterface
 from beneuro_data.conversion.anipose_interface import AniposeInterface
 from beneuro_data.conversion.beneuro_converter import BeNeuroConverter
 from beneuro_data.conversion.gpu_memory import get_free_gpu_memory
-from beneuro_data.conversion.multiprobe_kilosort_interface import \
-    MultiProbeKiloSortInterface
+from beneuro_data.conversion.multiprobe_kilosort_interface import (
+    MultiProbeKiloSortInterface,
+)
 from beneuro_data.data_validation import (
-    _find_spikeglx_recording_folders_in_session, validate_raw_session)
-from beneuro_data.spike_sorting import \
-    run_kilosort_on_session_and_save_in_processed
+    _find_spikeglx_recording_folders_in_session,
+    validate_raw_session,
+)
+from beneuro_data.spike_sorting import run_kilosort_on_session_and_save_in_processed
 
 
 def _try_adding_kilosort_to_source_data(
@@ -68,8 +69,9 @@ def _try_adding_anipose_to_source_data(
         return
 
     if len(csv_paths) > 1:
-        raise FileExistsError(f"More than one pose estimation HDF file "
-                              f"found: {csv_paths}")
+        raise FileExistsError(
+            f"More than one pose estimation HDF file " f"found: {csv_paths}"
+        )
 
     csv_path = csv_paths[0]
     try:

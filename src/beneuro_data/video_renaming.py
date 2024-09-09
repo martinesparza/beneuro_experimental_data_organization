@@ -1,11 +1,11 @@
 from pathlib import Path
 
+from rich import print as rprint
+
 from beneuro_data.data_validation import (
     validate_raw_videos_of_session,
     validate_session_path,
 )
-
-from rich import print as rprint
 
 
 def rename_raw_videos_of_session(

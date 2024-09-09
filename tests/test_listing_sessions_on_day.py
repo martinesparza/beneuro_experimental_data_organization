@@ -1,16 +1,14 @@
-from dataclasses import dataclass
-
-import pytest
 import datetime
+from dataclasses import dataclass
 from pathlib import Path
 
+import pytest
 from test_data_validation import _prepare_directory_structure
 
 from beneuro_data.query_sessions import (
-    list_subject_sessions_on_day,
     list_all_sessions_on_day,
+    list_subject_sessions_on_day,
 )
-
 
 TEST_DIR_PATH = Path(__file__).parent
 DAYS_SESSIONS_TEST_YAML_FOLDER = TEST_DIR_PATH / "list_days_sessions_test_yamls"

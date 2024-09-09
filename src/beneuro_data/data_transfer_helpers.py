@@ -1,7 +1,7 @@
-from typing import Union
-from pathlib import Path
-import shutil
 import filecmp
+import shutil
+from pathlib import Path
+from typing import Union
 
 
 def _source_to_dest(

@@ -1,8 +1,8 @@
-from pathlib import Path
 import datetime
+from pathlib import Path
 
-from .data_validation import validate_session_path, EXPECTED_DATE_FORMAT
 from .config import _load_config
+from .data_validation import EXPECTED_DATE_FORMAT, validate_session_path
 
 
 def list_subject_sessions(

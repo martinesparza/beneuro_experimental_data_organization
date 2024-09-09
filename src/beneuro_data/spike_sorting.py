@@ -8,7 +8,7 @@ from spikeinterface.sorters.utils.misc import (
     has_docker,
     has_docker_nvidia_installed,
     has_docker_python,
-    has_nvidia
+    has_nvidia,
 )
 
 try:
@@ -22,7 +22,7 @@ except ImportError as e:
 
 from beneuro_data.data_validation import (
     _find_spikeglx_recording_folders_in_session,
-    validate_raw_ephys_data_of_session
+    validate_raw_ephys_data_of_session,
 )
 
 
