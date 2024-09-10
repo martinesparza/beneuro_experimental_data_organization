@@ -36,7 +36,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         for kilosort_interface in self.kilosort_interfaces:
             kilosort_interface.set_aligned_starting_time(aligned_starting_time)
 
-    def add_probe_information_to_nwb(self, nwbfile):
+    def try_adding_probe_information_to_nwb(self, nwbfile):
         raw_recording_path = Path(
             str(self.processed_recording_path).replace("processed", "raw"))
         meta_files = list(raw_recording_path.rglob("*/*ap.meta"))
@@ -59,11 +59,10 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
             )
             nwbfile.create_electrode_group(
                 name=probe_name,
-                description=f'{probe.annotations["model_name"]}. Location corresponds to the targeted brain region '
-                            f'and position is the location of tip relative to bregma in stereotactic coordinates',
+                description=f'{probe.annotations["model_name"]}. Location is the output from '
+                            f'pinpoint and corresponds to the targeted brain area',
                 location="??",  # TODO
                 device=nwbfile.devices[probe_name],
-                position=[0, 0, 0, ],  # TODO
             )
 
             for contact_position, contact_id in zip(probe.contact_positions, probe.contact_ids):
@@ -71,7 +70,6 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 z = 0.0
                 # breakpoint()
                 contact_id = int(contact_id.split('e')[1:][0])
-
                 nwbfile.add_electrode(
                     group=nwbfile.electrode_groups[probe_name],
                     x=float(x),
@@ -79,8 +77,12 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                     z=z,
                     id=contact_id,
                     location="??",  # TODO brain region
-                    reference=f"Tip of the probe"  # TODO: Make this dynamic
+                    reference=f"Local probe reference: Top of the probe",
+                    enforce_unique_id=False
                 )
+
+
+
 
     def add_to_nwbfile(
         self,
@@ -88,7 +90,8 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         metadata: Optional[DeepDict] = None,
     ):
 
-        self.add_probe_information_to_nwb(nwbfile)
+        self.try_adding_probe_information_to_nwb(nwbfile)
+        # breakpoint()
 
         # Kilosort output will be saved in processing and not units
         # units is reserved for the units curated by Phy
