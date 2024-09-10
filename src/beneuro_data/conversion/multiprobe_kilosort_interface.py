@@ -9,8 +9,23 @@ from pynwb import NWBFile
 import probeinterface as pi
 
 
+def try_loading_trajectory_file(raw_recording_path):
 
+    pinpoint_trajectory_file = list(raw_recording_path.glob('*trajectory.txt'))
+    if not pinpoint_trajectory_file:
+        warnings.warn(f"No trajectory file from pinpoint found")
+        return
 
+    elif len(pinpoint_trajectory_file) > 1:
+        warnings.warn(f"Too many trajectory files from pinpoint found")
+        return
+
+    with open(pinpoint_trajectory_file[0], "r") as f:
+        trajectory_str = [l.strip() for l in f.readlines() if l.strip() != ""]
+        probe_trajectory_pairs = list(zip(trajectory_str[::2], trajectory_str[1::2]))
+        trajectory_dict = {probe: trajectory for probe, trajectory in probe_trajectory_pairs}
+
+    return trajectory_dict
 
 
 class MultiProbeKiloSortInterface(KiloSortSortingInterface):
@@ -43,6 +58,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         raw_recording_path = Path(
             str(self.processed_recording_path).replace("processed", "raw"))
         meta_files = list(raw_recording_path.rglob("*/*ap.meta"))
+        location_information = try_loading_trajectory_file(raw_recording_path)
 
         for meta_file, probe_name in zip(meta_files, self.probe_names):
             probe = pi.read_spikeglx(meta_file)  # Load probe object
@@ -64,7 +80,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 name=probe_name,
                 description=f'{probe.annotations["model_name"]}. Location is the output from '
                             f'pinpoint and corresponds to the targeted brain area',
-                location="??",  # TODO
+                location=location_information[probe_name] if location_information else None,
                 device=nwbfile.devices[probe_name],
             )
 
@@ -83,9 +99,6 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                     reference=f"Local probe reference: Top of the probe",
                     enforce_unique_id=False
                 )
-
-
-
 
     def add_to_nwbfile(
         self,
