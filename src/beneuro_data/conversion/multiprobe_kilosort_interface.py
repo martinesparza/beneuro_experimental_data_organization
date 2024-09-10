@@ -14,6 +14,19 @@ import probeinterface as pi
 
 
 def try_loading_trajectory_file(raw_recording_path):
+    """
+    Load trajectory of probes from pinpoint output files
+
+    Parameters
+    ----------
+    raw_recording_path :
+        path to raw session
+
+    Returns
+    -------
+    Dictionary with trajectory information per probe
+
+    """
 
     pinpoint_trajectory_file = list(raw_recording_path.glob('*trajectory.txt'))
     if not pinpoint_trajectory_file:
@@ -33,6 +46,21 @@ def try_loading_trajectory_file(raw_recording_path):
 
 
 def extract_channel_map_from_pinpoint_probe(filename, pinpoint_probe_name):
+    """
+    Extract the brain area of each electrode per probe
+
+    Parameters
+    ----------
+    filename :
+        Pinpoint channel_map file to open
+    pinpoint_probe_name :
+        Key generated in pinpoint to identify the probe
+
+    Returns
+    -------
+    Dataframe containing bran area of each electrode
+
+    """
     with open(filename, 'r') as file:
         channel_map_str = file.read().strip()
 
@@ -53,6 +81,21 @@ def extract_channel_map_from_pinpoint_probe(filename, pinpoint_probe_name):
 
 
 def create_channel_map(location_information, raw_recording_path):
+    """
+    Function to create the channel map of each probe
+
+    Parameters
+    ----------
+    location_information :
+        Pinpoint generate trajectory file (*trajectory.txt)
+    raw_recording_path :
+        Path to raw session
+
+    Returns
+    -------
+    Dictionary of channel map for each probe
+
+    """
 
     pinpoint_trajectory_file = list(raw_recording_path.glob('*channel_map.txt'))
     if not pinpoint_trajectory_file:
@@ -67,8 +110,8 @@ def create_channel_map(location_information, raw_recording_path):
     for probe in location_information.keys():
         pinpoint_probe_name = location_information[probe].split(":")[0]
         channel_map[probe] = extract_channel_map_from_pinpoint_probe(
-            pinpoint_trajectory_file[0],
-            pinpoint_probe_name
+            filename=pinpoint_trajectory_file[0],
+            pinpoint_probe_name=pinpoint_probe_name
         )
     
     return channel_map
@@ -98,7 +141,19 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         for kilosort_interface in self.kilosort_interfaces:
             kilosort_interface.set_aligned_starting_time(aligned_starting_time)
 
-    def try_adding_probe_information_to_nwb(self, nwbfile):
+    def add_probe_information_to_nwb(self, nwbfile):
+        """
+        Add probe information stored in SpikeGLX and pinpoint to the nwbfile
+
+        Parameters
+        ----------
+        nwbfile :
+            NWBFile handle
+
+        Returns
+        -------
+        """
+
         raw_recording_path = Path(
             str(self.processed_recording_path).replace("processed", "raw"))
         meta_files = list(raw_recording_path.rglob("*/*ap.meta"))
@@ -158,8 +213,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         metadata: Optional[DeepDict] = None,
     ):
 
-        self.try_adding_probe_information_to_nwb(nwbfile)
-        # breakpoint()
+        self.add_probe_information_to_nwb(nwbfile)
 
         # Kilosort output will be saved in processing and not units
         # units is reserved for the units curated by Phy
