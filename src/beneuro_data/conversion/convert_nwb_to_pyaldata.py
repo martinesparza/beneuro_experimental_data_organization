@@ -12,6 +12,22 @@ from pynwb.misc import Units
 
 
 def bin_spikes(probe_units: Units, bin_size: float) -> np.array:
+    """
+    Bin spikes from pynwb from one probe
+
+    Parameters
+    ----------
+    probe_units :
+        PyNWB Units object from which to read spike times
+    bin_size :
+        Bin size in seconds to use
+
+    Returns
+    -------
+    Array :
+        Matrix of neuron x time with binned spikes
+
+    """
 
     start_time = 0  # This is hardcoded since its aligned in nwb conversion
     end_time = np.max(probe_units.spike_times[:])
@@ -65,15 +81,21 @@ def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
 
 
 def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
-    """Parse pose estimation series data from anipose output
+    """
+    Parse pose estimation series data from anipose output
 
-    Args:
-        pose_est_series (PoseEstimationSeries): ndx_pose object to parse
+    Parameters
+    ----------
+    pose_est_series :
+        ndx_pose object to parse from nwb file
 
-    Returns:
-        df (pd.DataFrame): contains x, y, z or angle and timestamps.
+    Returns
+    -------
+    pd.DataFrame :
+        Contains x, y, z or angle and timestamps
 
     """
+
     if pose_est_series.data[:].shape[1] == 3:
         colnames = ['x', 'y', 'z']
     elif pose_est_series.data[:].shape[1] == 2 and all(pose_est_series.data[:, 1] == 0):
@@ -95,14 +117,20 @@ def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.Da
 
 
 def parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
-    """Parse data and timestamps of a SpatialSeries .pynwb object
-
-    Args:
-        spatial_series (SpatialSeries): pynwb object to parse
-
-    Returns:
-        df (pd.DataFrame): contains x, y, z and timestamps.
     """
+    Parse data and timestamps of a SpatialSeries .pynwb object
+
+    Parameters
+    ----------
+    spatial_series :
+        pynwb object to parse
+
+    Returns
+    -------
+    pd.DataFrame :
+        Contains x, y, z and timestamp
+    """
+
     if spatial_series.data[:].shape[1] == 2:
         colnames = ['x', 'y']
     elif spatial_series.data[:].shape[1] == 3:
@@ -143,12 +171,16 @@ class ParsedNWBFile:
             self.spike_data = self.parse_spiking_data()
 
     def parse_nwb_pycontrol_states(self):
-        """Parse pycontrol output from behavioural processing module of .nwb file
+        """
+        Parse pycontrol output from behavioural processing module of .nwb file
 
-               Returns:
-                   behav_dict (Dict): Dictionary containing states, event,
-                       and prints of pycontrol during execution
-               """
+        Returns
+        -------
+        Dict :
+            Dictionary containing states, event, and prints of pycontrol during execution
+
+        """
+
         print("Parsing pycontrol states")
 
         data_dict = {col: self.behav_module["behavioral_states"][col].data[:] for col in
@@ -227,6 +259,11 @@ class ParsedNWBFile:
         return spike_data_dict
 
     def run_conversion(self):
+        breakpoint()
+        df = pd.DataFrame(
+            columns=['trial_id', 'state', 'start_time', 'stop_time', 'event_name']
+        )
+
         pass
 
     def save_to_csv(self):
@@ -234,14 +271,7 @@ class ParsedNWBFile:
 
 
 def convert_nwb_to_pyaldata(nwbfile_path):
-    """Transform data from .nwb format to task-specific trialdata
 
-        Args:
-            nwbfile_path:
-
-        Returns:
-
-        """
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
     parsed_nwbfile.save_to_csv()
