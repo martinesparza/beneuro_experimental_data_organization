@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional, Literal, List, Union
 
 import pandas as pd
+import numpy as np
 import pynwb
 from neuroconv.datainterfaces import KiloSortSortingInterface
 from neuroconv.utils import DeepDict
