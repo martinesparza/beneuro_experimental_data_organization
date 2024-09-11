@@ -63,7 +63,7 @@ def nwb_to_pyaldata(
     nwbfile_path = nwbfiles[0].absolute()
 
     # Run conversion
-    convert_to_pyaldata(
+    convert_nwb_to_pyaldata(
         nwbfile_path,
     )
 
