@@ -22,16 +22,21 @@ app = typer.Typer()
 
 
 @app.command()
-def nwb_to_trialdata(
+def nwb_to_pyaldata(
     local_session_path: Annotated[
         Path,
         typer.Argument(
             help="Path to session directory"
         ),
     ],
+    default_channel_map: Annotated[
+        bool,
+        typer.Option(
+            "--default-channel-map/--custom-channel-map",
+            help="Use the default channel from .nwb file or use a custom one available in processed session folder"),
+    ] = True,
 ):
-    from beneuro_data.conversion.convert_to_trialdata import (
-        convert_to_trialdata)
+    from beneuro_data.conversion.convert_to_trialdata import convert_to_pyaldata
 
     config = _load_config()
     if not local_session_path.absolute().is_dir():
@@ -50,7 +55,7 @@ def nwb_to_trialdata(
     nwbfile_path = nwbfiles[0].absolute()
 
     # Run conversion
-    convert_to_trialdata(
+    convert_to_pyaldata(
         nwbfile_path,
     )
 

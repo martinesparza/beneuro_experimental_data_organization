@@ -205,7 +205,7 @@ class ParsedNWBFile:
         pass
 
 
-def convert_to_trialdata(
+def convert_to_pyaldata(
     nwbfile_path: Path,
 ):
     """Transform data from .nwb format to task-specific trialdata
