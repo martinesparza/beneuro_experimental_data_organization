@@ -26,7 +26,7 @@ def nwb_to_pyaldata(
     local_session_path: Annotated[
         Path,
         typer.Argument(
-            help="Path to session directory"
+            help="Path to processed session directory"
         ),
     ],
     default_channel_map: Annotated[
@@ -36,9 +36,17 @@ def nwb_to_pyaldata(
             help="Use the default channel from .nwb file or use a custom one available in processed session folder"),
     ] = True,
 ):
+    """
+    Convert a session's data to from NWB to pyaldata form, using a default channel map or a custom one
+
+    """
     from beneuro_data.conversion.convert_to_trialdata import convert_to_pyaldata
 
     config = _load_config()
+
+    # TODO: Implement main argument to be session name and automatically look for NWB
+    #  file in processed
+
     if not local_session_path.absolute().is_dir():
         raise ValueError("Session path must be a directory.")
     if not local_session_path.absolute().exists():
