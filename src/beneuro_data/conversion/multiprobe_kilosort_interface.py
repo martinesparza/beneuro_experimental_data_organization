@@ -30,12 +30,12 @@ def try_loading_trajectory_file(raw_recording_path):
 
     pinpoint_trajectory_file = list(raw_recording_path.glob('*trajectory.txt'))
     if not pinpoint_trajectory_file:
-        warnings.warn(f"No trajectory file from pinpoint found")
+        warnings.warn(f"No trajectory file from pinpoint found. If no trajectory file is present"
+                      f" channel map information cannot be loaded")
         return
 
     elif len(pinpoint_trajectory_file) > 1:
-        warnings.warn(f"Too many trajectory files from pinpoint found")
-        return
+        raise FileExistsError("Too many files found; expected only one.")
 
     with open(pinpoint_trajectory_file[0], "r") as f:
         trajectory_str = [l.strip() for l in f.readlines() if l.strip() != ""]
@@ -45,7 +45,7 @@ def try_loading_trajectory_file(raw_recording_path):
     return trajectory_dict
 
 
-def extract_channel_map_from_pinpoint_probe(filename, pinpoint_probe_name):
+def load_channel_map_information_from_pinpoint_probe(filename, pinpoint_probe_name):
     """
     Extract the brain area of each electrode per probe
 
@@ -109,7 +109,7 @@ def create_channel_map(location_information, raw_recording_path):
     channel_map = {}
     for probe in location_information.keys():
         pinpoint_probe_name = location_information[probe].split(":")[0]
-        channel_map[probe] = extract_channel_map_from_pinpoint_probe(
+        channel_map[probe] = load_channel_map_information_from_pinpoint_probe(
             filename=pinpoint_trajectory_file[0],
             pinpoint_probe_name=pinpoint_probe_name
         )
@@ -155,24 +155,27 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         """
 
         raw_recording_path = Path(
-            str(self.processed_recording_path).replace("processed", "raw"))
-        meta_files = list(raw_recording_path.rglob("*/*ap.meta"))
-        location_information = try_loading_trajectory_file(raw_recording_path)
-        if location_information is not None:
-            channel_map = create_channel_map(location_information, raw_recording_path)
-        elif location_information is None:
-            channel_map = None
+            str(self.folder_path).replace("processed", "raw"))
+        meta_filepaths = list(raw_recording_path.rglob("*/*ap.meta"))
 
-        for meta_file, probe_name in zip(meta_files, self.probe_names):
-            probe = pi.read_spikeglx(meta_file)  # Load probe object
+        # Try loading trajectory information from pinpoint
+        pinpoint_trajectories = try_loading_trajectory_file(raw_recording_path)
+
+        # If pinpoint_trajectories is available, load channel map
+        channel_map = create_channel_map(pinpoint_trajectories, raw_recording_path) if pinpoint_trajectories is not None else None
+
+        for probe_name in self.probe_names:
+
+            # Get meta_file_path for probe_name
+            meta_filepath = next((path for path in meta_filepaths if probe_name in str(path)), None)
+
+            # Load probe object
+            probe = pi.read_spikeglx(meta_filepath)
 
             if probe.get_shank_count() == 1:  # Set shank ids
                 probe.set_shank_ids(np.full((probe.get_contact_count(), ), 1))
             else:
-                warnings.warn(
-                    "More than one shank. You are probably using Neuropixels 2.0. This is not "
-                    "yet implemented in bnd"
-                )
+                raise NotImplementedError('Multishank probes not yet implemented')
 
             nwbfile.create_device(
                 name=probe_name,
@@ -183,14 +186,13 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 name=probe_name,
                 description=f'{probe.annotations["model_name"]}. Location is the output from '
                             f'pinpoint and corresponds to the targeted brain area',
-                location=location_information[probe_name] if location_information else None,
+                location=pinpoint_trajectories[probe_name] if pinpoint_trajectories else None,
                 device=nwbfile.devices[probe_name],
             )
 
             for contact_position, contact_id in zip(probe.contact_positions, probe.contact_ids):
                 x, y = contact_position
                 z = 0.0
-                # breakpoint()
                 contact_id = int(contact_id.split('e')[1:][0])
                 if channel_map is not None:
                     contact_location = channel_map[probe_name].area_name[contact_id]
