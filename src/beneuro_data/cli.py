@@ -44,6 +44,8 @@ def nwb_to_pyaldata(
 
     config = _load_config()
 
+    # TODO: Make custom channel map option in case we dont agree with pinpoint
+
     # TODO: Implement main argument to be session name and automatically look for NWB
     #  file in processed
 

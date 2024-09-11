@@ -55,7 +55,7 @@ def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     probe_channel_map = probe_electrode_locations_df['location'].to_dict()
 
     brain_area_spikes = {}
-    brain_areas = ['SSp-ul']  # TODO, get different areas from probe_channel_map ignoring void and out
+    brain_areas = {value for value in probe_channel_map.values() if value not in ['out', 'void']}
     for brain_area in brain_areas:
         brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
         brain_area_neurons = np.where(np.isin(max_amplitude_channel, brain_area_channels))[0]
@@ -140,7 +140,7 @@ class ParsedNWBFile:
 
             # Spiking data
             self.bin_size = 0.01  # 10 ms bins hardcoded for now
-            self.spike_data = self.parse_ephys_data()
+            self.spike_data = self.parse_spiking_data()
 
     def parse_nwb_pycontrol_states(self):
         """Parse pycontrol output from behavioural processing module of .nwb file
@@ -212,17 +212,19 @@ class ParsedNWBFile:
 
         return parsed_anipose_data_dict
 
-    def parse_ephys_data(self):
-        print(f"Parsing ephys data. Found probes {list(self.ephys_module.keys())}")
-        ephys_data_dict = {}
+    def parse_spiking_data(self):
+        print(f"Parsing spiking data. Found probes {list(self.ephys_module.keys())}")
+        spike_data_dict = {}
 
+        # TODO: Make custom channel map option in case we dont agree with pinpoint
         for probe_units in self.ephys_module.keys():
-            ephys_data_dict[probe_units] = parse_pynwb_probe(
+            spike_data_dict[probe_units] = parse_pynwb_probe(
                 probe_units=self.ephys_module[probe_units],
                 electrode_info=self.nwbfile.electrodes,
                 bin_size=self.bin_size
             )
-        return ephys_data_dict
+
+        return spike_data_dict
 
     def run_conversion(self):
         pass
