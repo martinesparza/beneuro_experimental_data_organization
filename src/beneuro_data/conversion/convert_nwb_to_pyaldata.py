@@ -11,33 +11,57 @@ from pynwb.behavior import SpatialSeries
 from pynwb.misc import Units
 
 
-def bin_spikes(spike_times: np.array, bin_size: float, end_time: float) -> np.array:
+def bin_spikes(probe_units: Units, bin_size: float) -> np.array:
 
     start_time = 0  # This is hardcoded since its aligned in nwb conversion
+    end_time = np.max(probe_units.spike_times[:])
     number_of_bins = int(np.ceil((end_time - start_time) / bin_size))
 
     # Initialize the binned spikes array
-    binned_spikes = np.zeros(number_of_bins, dtype=int)
+    binned_spikes = np.zeros((len(probe_units.id[:]), number_of_bins), dtype=int)
 
     # Populate the binned spikes array
-    for spike_time in spike_times:
-        if start_time <= spike_time < end_time:
-            bin_index = int((spike_time - start_time) / bin_size)
-            binned_spikes[bin_index] += 1
+    for neuron_id in probe_units.id[:]:
+        spike_times = probe_units.get_unit_spike_times(neuron_id)
+        for spike_time in spike_times:
+            if start_time <= spike_time < end_time:
+                bin_index = int((spike_time - start_time) / bin_size)
+                binned_spikes[neuron_id, bin_index] += 1
 
     return binned_spikes
 
 
-def parse_pynwb_units(units: Units, bin_size: float):
+def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
 
-    for unit in units.id[:]:
-        binned_spikes = bin_spikes(
-            spike_times=units.get_unit_spike_times(0),
-            bin_size=bin_size,
-            end_time=np.max(units.spike_times[:])
-        )
+    # This returns a neurons x bin array of 0s and 1s
+    binned_spikes = bin_spikes(probe_units, bin_size)
 
-    return
+    # This returns a [nTemplates, nTimePoints, nTempChannels] matrix
+    templates = probe_units.waveform_mean[:]
+
+    # NOTE: We do not need the templates_ind.npy since in the case of Kilosort templates_ind
+    # is just the integers from 0 to nChannels-1, as templates are defined on all channels.
+
+    # TODO: Load channel_map.npy to .nwb to have more thorough mapping between templates and
+    #   channels. I am not currently loading the channel_map.npy file since for Neuropixels 1.0
+    #   it is simply an array of 0 to 383
+
+    # Get max amplitude channel based on templates
+    max_amplitude_channel = np.argmax(np.max(np.abs(templates), axis=1), axis=1)
+
+    # Get brain area channel map for this specific probe
+    electrode_info_df = electrode_info.to_dataframe()
+    probe_electrode_locations_df = electrode_info_df[electrode_info_df['group_name'] == probe_units.name.split('_')[-1]]
+    probe_channel_map = probe_electrode_locations_df['location'].to_dict()
+
+    brain_area_spikes = {}
+    brain_areas = ['SSp-ul']  # TODO, get different areas from probe_channel_map ignoring void and out
+    for brain_area in brain_areas:
+        brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
+        brain_area_neurons = np.where(np.isin(max_amplitude_channel, brain_area_channels))[0]
+        brain_area_spikes[brain_area] = binned_spikes[brain_area_neurons, :]
+
+    return brain_area_spikes
 
 
 def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
@@ -191,9 +215,11 @@ class ParsedNWBFile:
     def parse_ephys_data(self):
         print(f"Parsing ephys data. Found probes {list(self.ephys_module.keys())}")
         ephys_data_dict = {}
-        for probe in self.ephys_module.keys():
-            ephys_data_dict[probe] = parse_pynwb_units(
-                units=self.ephys_module[probe],
+
+        for probe_units in self.ephys_module.keys():
+            ephys_data_dict[probe_units] = parse_pynwb_probe(
+                probe_units=self.ephys_module[probe_units],
+                electrode_info=self.nwbfile.electrodes,
                 bin_size=self.bin_size
             )
         return ephys_data_dict
