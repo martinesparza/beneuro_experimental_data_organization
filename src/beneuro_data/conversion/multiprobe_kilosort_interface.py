@@ -10,12 +10,12 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
     def __init__(
         self,
         # folder_paths: tuple[FolderPathType, ...],
-        processed_recording_path: FolderPathType,
+        folder_path: FolderPathType,
         keep_good_only: bool = False,
         verbose: bool = True,
     ):
         kilosort_folder_paths = list(
-            Path(processed_recording_path).glob("**/sorter_output")
+            Path(folder_path).glob("**/sorter_output")
         )
         self.probe_names = [
             ks_path.parent.name.split("_")[-1] for ks_path in kilosort_folder_paths
@@ -26,7 +26,8 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
             for folder_path in kilosort_folder_paths
         ]
 
-        self.processed_recording_path = Path(processed_recording_path)
+        # self.processed_recording_path = Path(processed_recording_path)
+        self.folder_path = Path(folder_path)
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
         for kilosort_interface in self.kilosort_interfaces:

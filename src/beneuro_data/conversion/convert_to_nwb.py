@@ -33,7 +33,8 @@ def _try_adding_kilosort_to_source_data(
         else:
             source_data.update(
                 Kilosort={
-                    "processed_recording_path": str(processed_session_path),
+                    # "processed_recording_path": str(processed_session_path),
+                    "folder_path": str(processed_session_path),
                 }
             )
 
