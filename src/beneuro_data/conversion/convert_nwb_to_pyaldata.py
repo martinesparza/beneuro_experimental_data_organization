@@ -230,9 +230,6 @@ class ParsedNWBFile:
         df_events.sort_values(by='timestamp', ascending=True, inplace=True)
         df_events.reset_index(drop=True, inplace=True)
 
-        # TODO: fix units
-        df_events['timestamp'] = df_events['timestamp'] / 1000
-
         return df_events
 
     def parse_motion_sensors(self):
@@ -266,15 +263,29 @@ class ParsedNWBFile:
 
         return spike_data_dict
 
-    def add_pycontrol_events_to_df(self):
-        for row in self.pyaldata_df.items():
-            trial_specific_events = self.pycontrol_events[
-                (self.pycontrol_events['column_a'] >= row['idx_trial_start'])
-                & (self.pycontrol_events['column_a'] <= row['idx_trial_end'])
-            ]
-            breakpoint()
+    def add_pycontrol_events_to_df(self, unique_events):
+        # Add timestamp_idx
+        self.pycontrol_events['timestamp_idx'] = np.floor(self.pycontrol_events.timestamp.values[:] / 1000 / self.bin_size).astype(int)
 
+        # Iterate over states
+        for unique_event in unique_events:
 
+            tmp_df = self.pycontrol_events[self.pycontrol_events['event'] == unique_event]
+            for index, row in self.pyaldata_df.iterrows():
+                # Add trial lenght
+                # TODO: This should go somewhere else
+                self.pyaldata_df.loc[index, 'trial_length'] = self.pyaldata_df.loc[index, 'idx_trial_end'] - self.pyaldata_df.loc[index, 'idx_trial_start']
+
+                trial_specific_events = tmp_df[(tmp_df['timestamp_idx'] >= row['idx_trial_start']) & (tmp_df['timestamp_idx'] <= row['idx_trial_end'])]
+
+                # Add to pyaldata dataframe
+                self.pyaldata_df[f'{unique_event}_event_values'] = self.pyaldata_df[f'{unique_event}_event_values'].astype('object')
+                self.pyaldata_df[f'{unique_event}_event_values'] = self.pyaldata_df[f'{unique_event}_event_values'].astype('object')
+
+                self.pyaldata_df.at[index, f'{unique_event}_event_values'] = trial_specific_events['value'].to_numpy()
+                self.pyaldata_df.at[index, f'{unique_event}_event_idx'] = trial_specific_events['timestamp_idx'].to_numpy() - row['idx_trial_start']
+
+        return
 
     def add_motion_sensor_data_to_df(self):
         pass
@@ -287,15 +298,21 @@ class ParsedNWBFile:
 
     def run_conversion(self):
 
-        self.pyaldata_df = pd.DataFrame(columns=[
-            'mouse',  # TODO
-            'date',
-            'trial_id',
-            'trial_name',
-            'bin_size',
-            'idx_trial_start',
-            'idx_trial_end'
-        ])
+        # state columns
+        state_columns = ['mouse', 'date', 'trial_id', 'trial_name', 'trial_length',
+                         'bin_size', 'idx_trial_start', 'idx_trial_end']
+
+        # event columns
+        unique_events = self.pycontrol_events['event'].unique()
+        event_columns = []
+        for unique_event in unique_events:
+            event_columns.append(f'{unique_event}_event_values')
+            event_columns.append(f'{unique_event}_event_idx')
+
+        # All columns
+        columns = state_columns + event_columns
+
+        self.pyaldata_df = pd.DataFrame(columns=columns)
 
         # TODO: Fix time units
         start_time = 0.0
@@ -307,21 +324,23 @@ class ParsedNWBFile:
         # Start and stop times of each state
         self.pyaldata_df['idx_trial_start'] = np.ceil(self.pycontrol_states.start_time.values[:] / 1000 / self.bin_size).astype(int)
         self.pyaldata_df['idx_trial_end'] = np.floor(self.pycontrol_states.stop_time.values[:] / 1000 / self.bin_size).astype(int)
+        # self.pyaldata_df['idx_trial_end'] = self.pyaldata_df['idx_trial_end'] - self.pyaldata_df['idx_trial_start']
+
         self.pyaldata_df['trial_name'] = self.pycontrol_states.state_name[:]
 
-        if self.pyaldata_df.idx_trial_end.values[1] != number_of_bins:
+        if self.pyaldata_df.idx_trial_end.values[-1] != number_of_bins:
             warnings.warn(
                 f'Extract number of bins: {self.pyaldata_df.idx_trial_end.values[-1]} does not match calculated '
                 f'number of bins: {number_of_bins} '
             )
 
-        self.add_pycontrol_events_to_df()
+        self.add_pycontrol_events_to_df(unique_events)
 
-        self.add_motion_sensor_data_to_df()
+        self.add_motion_sensor_data_to_df()  # TODO
 
-        self.add_anipose_data_to_df()
+        self.add_anipose_data_to_df()  # TODO
 
-        self.add_spiking_data_to_df()
+        self.add_spiking_data_to_df()  # TODO
 
 
         breakpoint()
