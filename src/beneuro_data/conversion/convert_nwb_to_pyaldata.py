@@ -13,7 +13,7 @@ from pynwb.behavior import SpatialSeries
 from pynwb.misc import Units
 
 
-def bin_spikes(probe_units: Units, bin_size: float) -> np.array:
+def _bin_spikes(probe_units: Units, bin_size: float) -> np.array:
     """
     Bin spikes from pynwb from one probe
 
@@ -49,10 +49,10 @@ def bin_spikes(probe_units: Units, bin_size: float) -> np.array:
     return binned_spikes
 
 
-def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
+def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
 
     # This returns a neurons x bin array of 0s and 1s
-    binned_spikes = bin_spikes(probe_units, bin_size)
+    binned_spikes = _bin_spikes(probe_units, bin_size)
 
     # This returns a [nTemplates, nTimePoints, nTempChannels] matrix
     templates = probe_units.waveform_mean[:]
@@ -82,7 +82,7 @@ def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     return brain_area_spikes
 
 
-def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
+def _parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
     """
     Parse pose estimation series data from anipose output
 
@@ -118,7 +118,7 @@ def parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.Da
     return df
 
 
-def parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
+def _parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
     """
     Parse data and timestamps of a SpatialSeries .pynwb object
 
@@ -148,6 +148,24 @@ def parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
     df['timestamps'] = spatial_series.timestamps[:]
 
     return df
+
+
+def _add_data_to_trial(df_to_add_to, new_data_column, df_to_add_from, columns_to_read_from, timestamp_column=None):
+    for index, row in df_to_add_to.iterrows():
+        trial_specific_events = df_to_add_from[
+            (df_to_add_from['timestamp_idx'] >= row['idx_trial_start']) &
+            (df_to_add_from['timestamp_idx'] <= row['idx_trial_end'])
+        ]
+
+        # Add to pyaldata dataframe
+        df_to_add_to[new_data_column] = df_to_add_to[new_data_column].astype('object')
+        df_to_add_to.at[index, new_data_column] = trial_specific_events[columns_to_read_from].to_numpy()
+
+        if timestamp_column is not None:
+            df_to_add_to[f'{timestamp_column}'] = df_to_add_to[f'{timestamp_column}'].astype('object')
+            df_to_add_to.at[index, f'{timestamp_column}'] = trial_specific_events['timestamp_idx'].to_numpy() - row['idx_trial_start']
+
+    return df_to_add_to
 
 
 class ParsedNWBFile:
@@ -236,7 +254,7 @@ class ParsedNWBFile:
         print("Parsing motion sensors")
         ball_position_spatial_series = self.behav_module['Position'].spatial_series[
             'Ball position']
-        return parse_spatial_series(ball_position_spatial_series)
+        return _parse_spatial_series(ball_position_spatial_series)
 
     def parse_anipose_output(self):
         print("Parsing anipose data")
@@ -244,7 +262,7 @@ class ParsedNWBFile:
 
         parsed_anipose_data_dict = {}
         for key in anipose_data_dict.keys():
-            parsed_anipose_data_dict[key] = parse_pose_estimation_series(
+            parsed_anipose_data_dict[key] = _parse_pose_estimation_series(
                 anipose_data_dict[key])
 
         return parsed_anipose_data_dict
@@ -255,7 +273,7 @@ class ParsedNWBFile:
 
         # TODO: Make custom channel map option in case we dont agree with pinpoint
         for probe_units in self.ephys_module.keys():
-            spike_data_dict[probe_units] = parse_pynwb_probe(
+            spike_data_dict[probe_units] = _parse_pynwb_probe(
                 probe_units=self.ephys_module[probe_units],
                 electrode_info=self.nwbfile.electrodes,
                 bin_size=self.bin_size
@@ -287,33 +305,41 @@ class ParsedNWBFile:
         return
 
     def add_pycontrol_events_to_df(self, unique_events):
-        unique_events = self.pycontrol_events['event'].unique()
 
         # Add timestamp_idx
         self.pycontrol_events['timestamp_idx'] = np.floor(self.pycontrol_events.timestamp.values[:] / 1000 / self.bin_size).astype(int)
 
         # Iterate over states
         for unique_event in unique_events:
-
-            tmp_df = self.pycontrol_events[self.pycontrol_events['event'] == unique_event]
-            for index, row in self.pyaldata_df.iterrows():
-                # Add trial lenght
-                # TODO: This should go somewhere else
-                self.pyaldata_df.loc[index, 'trial_length'] = self.pyaldata_df.loc[index, 'idx_trial_end'] - self.pyaldata_df.loc[index, 'idx_trial_start']
-
-                trial_specific_events = tmp_df[(tmp_df['timestamp_idx'] >= row['idx_trial_start']) & (tmp_df['timestamp_idx'] <= row['idx_trial_end'])]
-
-                # Add to pyaldata dataframe
-                self.pyaldata_df[f'{unique_event}_event_values'] = self.pyaldata_df[f'{unique_event}_event_values'].astype('object')
-                self.pyaldata_df[f'{unique_event}_event_values'] = self.pyaldata_df[f'{unique_event}_event_values'].astype('object')
-
-                self.pyaldata_df.at[index, f'{unique_event}_event_values'] = trial_specific_events['value'].to_numpy()
-                self.pyaldata_df.at[index, f'{unique_event}_event_idx'] = trial_specific_events['timestamp_idx'].to_numpy() - row['idx_trial_start']
+            unique_event_df = self.pycontrol_events[self.pycontrol_events['event'] == unique_event]
+            self.pyaldata_df = _add_data_to_trial(
+                df_to_add_to=self.pyaldata_df,
+                new_data_column=f'{unique_event}_event_values',
+                df_to_add_from=unique_event_df,
+                columns_to_read_from='value',
+                timestamp_column=f'{unique_event}_event_idx'
+            )
 
         return
 
     def add_motion_sensor_data_to_df(self):
-        breakpoint()
+        # Bin timestamps
+        self.pycontrol_motion_sensors['timestamp_idx'] = np.floor(
+            self.pycontrol_motion_sensors.timestamps.values[:] / 1000 / self.bin_size
+        ).astype(int)
+
+        # Add columns
+        self.pyaldata_df['motion_sensor_xy'] = np.nan
+
+        self.pyaldata_df = _add_data_to_trial(
+            df_to_add_to=self.pyaldata_df,
+            new_data_column='motion_sensor_xy',
+            df_to_add_from=self.pycontrol_motion_sensors,
+            columns_to_read_from=['x', 'y'],
+            timestamp_column=None
+        )
+
+
         pass
 
     def add_anipose_data_to_df(self):
