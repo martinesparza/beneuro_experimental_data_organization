@@ -263,7 +263,32 @@ class ParsedNWBFile:
 
         return spike_data_dict
 
+    def add_pycontrol_states_to_df(self):
+        # TODO: Fix time units
+        start_time = 0.0
+        end_time = self.pycontrol_states.stop_time.values[-1] / 1000  # To seconds
+        number_of_bins = int(np.floor((end_time - start_time) / self.bin_size))
+        self.pyaldata_df['trial_id'] = self.pycontrol_states.start_time.index
+        self.pyaldata_df['bin_size'] = self.bin_size
+
+        # Start and stop times of each state
+        self.pyaldata_df['idx_trial_start'] = np.ceil(
+            self.pycontrol_states.start_time.values[:] / 1000 / self.bin_size).astype(int)
+        self.pyaldata_df['idx_trial_end'] = np.floor(
+            self.pycontrol_states.stop_time.values[:] / 1000 / self.bin_size).astype(int)
+
+        self.pyaldata_df['trial_name'] = self.pycontrol_states.state_name[:]
+
+        if self.pyaldata_df.idx_trial_end.values[-1] != number_of_bins:
+            warnings.warn(
+                f'Extract number of bins: {self.pyaldata_df.idx_trial_end.values[-1]} does not match calculated '
+                f'number of bins: {number_of_bins} ')
+
+        return
+
     def add_pycontrol_events_to_df(self, unique_events):
+        unique_events = self.pycontrol_events['event'].unique()
+
         # Add timestamp_idx
         self.pycontrol_events['timestamp_idx'] = np.floor(self.pycontrol_events.timestamp.values[:] / 1000 / self.bin_size).astype(int)
 
@@ -288,6 +313,7 @@ class ParsedNWBFile:
         return
 
     def add_motion_sensor_data_to_df(self):
+        breakpoint()
         pass
 
     def add_anipose_data_to_df(self):
@@ -297,57 +323,39 @@ class ParsedNWBFile:
         pass
 
     def run_conversion(self):
+        """
+        Main run routine for pyaldata conversion
 
+        Returns
+        -------
+
+        """
+
+        print("Converting parsed nwb data into pyaldata format")
+
+        # Initialize all the necessary columns
         # state columns
         state_columns = ['mouse', 'date', 'trial_id', 'trial_name', 'trial_length',
                          'bin_size', 'idx_trial_start', 'idx_trial_end']
-
         # event columns
         unique_events = self.pycontrol_events['event'].unique()
         event_columns = []
         for unique_event in unique_events:
             event_columns.append(f'{unique_event}_event_values')
             event_columns.append(f'{unique_event}_event_idx')
-
         # All columns
         columns = state_columns + event_columns
 
         self.pyaldata_df = pd.DataFrame(columns=columns)
 
-        # TODO: Fix time units
-        start_time = 0.0
-        end_time = self.pycontrol_states.stop_time.values[-1] / 1000  # To seconds
-        number_of_bins = int(np.floor((end_time - start_time) / self.bin_size))
-        self.pyaldata_df['trial_id'] = self.pycontrol_states.start_time.index
-        self.pyaldata_df['bin_size'] = self.bin_size
-
-        # Start and stop times of each state
-        self.pyaldata_df['idx_trial_start'] = np.ceil(self.pycontrol_states.start_time.values[:] / 1000 / self.bin_size).astype(int)
-        self.pyaldata_df['idx_trial_end'] = np.floor(self.pycontrol_states.stop_time.values[:] / 1000 / self.bin_size).astype(int)
-        # self.pyaldata_df['idx_trial_end'] = self.pyaldata_df['idx_trial_end'] - self.pyaldata_df['idx_trial_start']
-
-        self.pyaldata_df['trial_name'] = self.pycontrol_states.state_name[:]
-
-        if self.pyaldata_df.idx_trial_end.values[-1] != number_of_bins:
-            warnings.warn(
-                f'Extract number of bins: {self.pyaldata_df.idx_trial_end.values[-1]} does not match calculated '
-                f'number of bins: {number_of_bins} '
-            )
-
+        # Add information
+        self.add_pycontrol_states_to_df()
         self.add_pycontrol_events_to_df(unique_events)
-
         self.add_motion_sensor_data_to_df()  # TODO
-
         self.add_anipose_data_to_df()  # TODO
-
         self.add_spiking_data_to_df()  # TODO
 
-
         breakpoint()
-
-
-
-
 
         pass
 
