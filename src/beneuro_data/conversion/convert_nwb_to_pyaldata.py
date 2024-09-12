@@ -360,6 +360,27 @@ class ParsedNWBFile:
         return
 
     def add_spiking_data_to_df(self):
+        for probe_key in self.spike_data.leys():
+            for brain_area_key, brain_area_spiking in self.spike_data[probe_key].items():
+                pass
+                # TODO: Have to add the
+                # Timestamps are already binned
+
+
+                # # Add columns
+                # self.pyaldata_df[brain_area_key] = np.nan
+                #
+                # # Add data
+                # self.pyaldata_df = _add_data_to_trial(
+                #     df_to_add_to=self.pyaldata_df,
+                #     new_data_column=anipose_key,
+                #     df_to_add_from=anipose_value,
+                #     columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y','z'],
+                #     timestamp_column=None
+                # )
+
+
+
         pass
 
     def run_conversion(self):
