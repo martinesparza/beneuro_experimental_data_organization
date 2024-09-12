@@ -25,7 +25,7 @@ optional = true
 cuda-python = "^12.2.0"
 docker = "^7.1.0"
 spikeinterface = "0.101"
-neuroconv = {extras = ["kilosort", "phy", "spikeglx"], version = "^0.4.8"}
+neuroconv = "0.6.3"
 ndx-pose = "^0.1.1"
 
 [build-system]
