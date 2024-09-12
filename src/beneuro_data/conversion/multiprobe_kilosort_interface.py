@@ -1,7 +1,9 @@
 from pathlib import Path
 from typing import Optional
 
+import numpy as np
 from neuroconv.datainterfaces import KiloSortSortingInterface
+from neuroconv.tools.spikeinterface import write_sorting_to_nwbfile
 from neuroconv.utils import DeepDict, FolderPathType
 from pynwb import NWBFile
 
@@ -14,19 +16,18 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         keep_good_only: bool = False,
         verbose: bool = True,
     ):
-        kilosort_folder_paths = list(
+        self.kilosort_folder_paths = list(
             Path(folder_path).glob("**/sorter_output")
         )
         self.probe_names = [
-            ks_path.parent.name.split("_")[-1] for ks_path in kilosort_folder_paths
+            ks_path.parent.name.split("_")[-1] for ks_path in self.kilosort_folder_paths
         ]
 
         self.kilosort_interfaces = [
             KiloSortSortingInterface(folder_path, keep_good_only, verbose)
-            for folder_path in kilosort_folder_paths
+            for folder_path in self.kilosort_folder_paths
         ]
 
-        # self.processed_recording_path = Path(processed_recording_path)
         self.folder_path = Path(folder_path)
 
     def set_aligned_starting_time(self, aligned_starting_time: float):
@@ -45,18 +46,32 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
     ):
         # Kilosort output will be saved in processing and not units
         # units is reserved for the units curated by Phy
-        for probe_name, kilosort_interface in zip(
-            self.probe_names, self.kilosort_interfaces
+        for probe_name, kilosort_interface, kilosort_folder_path in zip(
+            self.probe_names, self.kilosort_interfaces, self.kilosort_folder_paths
         ):
-            kilosort_interface.add_to_nwbfile(
-                nwbfile,
-                metadata,
-                stub_test,
-                write_ecephys_metadata=True,
-                write_as="processing",  # kilosort output is not the final curated version
+            # breakpoint()
+
+            templates = np.load(kilosort_folder_path / 'templates.npy')
+
+            write_sorting_to_nwbfile(
+                sorting=kilosort_interface.sorting_extractor,
+                nwbfile=nwbfile,
+                metadata=metadata,
+                write_as="processing",
                 units_name=f"units_{probe_name}",
                 units_description=f"Kilosorted units on {probe_name}",
+                waveform_means=templates
             )
+
+            # kilosort_interface.add_to_nwbfile(
+            #     nwbfile,
+            #     metadata,
+            #     stub_test,
+            #     write_ecephys_metadata=True,
+            #     write_as="processing",  # kilosort output is not the final curated version
+            #     units_name=f"units_{probe_name}",
+            #     units_description=f"Kilosorted units on {probe_name}",
+            # )
 
             # The following does add the probes to the NWB file but without any useful info,
             # so I'll use probeinterface for that
