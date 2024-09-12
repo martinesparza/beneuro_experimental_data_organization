@@ -324,13 +324,12 @@ class ParsedNWBFile:
 
     def add_motion_sensor_data_to_df(self):
         # Bin timestamps
-        self.pycontrol_motion_sensors['timestamp_idx'] = np.floor(
-            self.pycontrol_motion_sensors.timestamps.values[:] / 1000 / self.bin_size
-        ).astype(int)
+        self.pycontrol_motion_sensors['timestamp_idx'] = np.floor(self.pycontrol_motion_sensors.timestamps.values[:] / 1000 / self.bin_size).astype(int)
 
         # Add columns
         self.pyaldata_df['motion_sensor_xy'] = np.nan
 
+        # Add data
         self.pyaldata_df = _add_data_to_trial(
             df_to_add_to=self.pyaldata_df,
             new_data_column='motion_sensor_xy',
@@ -338,12 +337,27 @@ class ParsedNWBFile:
             columns_to_read_from=['x', 'y'],
             timestamp_column=None
         )
-
-
-        pass
+        return
 
     def add_anipose_data_to_df(self):
-        pass
+        for anipose_key, anipose_value in self.anipose_data.items():
+            # Bin timestamps
+            # TODO: Fix time units, since here we are already in seconds its all good
+            anipose_value['timestamp_idx'] = np.floor(anipose_value.timestamps.values[:] / self.bin_size).astype(int)
+
+            # Add columns
+            self.pyaldata_df[anipose_key] = np.nan
+
+            # Add data
+            self.pyaldata_df = _add_data_to_trial(
+                df_to_add_to=self.pyaldata_df,
+                new_data_column=anipose_key,
+                df_to_add_from=anipose_value,
+                columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y', 'z'],
+                timestamp_column=None
+            )
+
+        return
 
     def add_spiking_data_to_df(self):
         pass
@@ -377,15 +391,14 @@ class ParsedNWBFile:
         # Add information
         self.add_pycontrol_states_to_df()
         self.add_pycontrol_events_to_df(unique_events)
-        self.add_motion_sensor_data_to_df()  # TODO
+        self.add_motion_sensor_data_to_df()
         self.add_anipose_data_to_df()  # TODO
         self.add_spiking_data_to_df()  # TODO
 
-        breakpoint()
-
-        pass
+        return
 
     def save_to_csv(self):
+        print('Saved the data somewhere i guess')
         pass
 
 
@@ -394,5 +407,7 @@ def convert_nwb_to_pyaldata(nwbfile_path):
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
     parsed_nwbfile.save_to_csv()
+    breakpoint()
+
 
     return
