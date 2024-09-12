@@ -1,6 +1,8 @@
 """
 Module for conversion from nwb to pyaldata format
 """
+import warnings
+
 import numpy as np
 import pandas as pd
 
@@ -63,7 +65,7 @@ def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     #   it is simply an array of 0 to 383
 
     # Get max amplitude channel based on templates
-    max_amplitude_channel = np.argmax(np.max(np.abs(templates), axis=1), axis=1)
+    chan_best = (templates**2).sum(axis=1).argmax(axis=-1)
 
     # Get brain area channel map for this specific probe
     electrode_info_df = electrode_info.to_dataframe()
@@ -74,7 +76,7 @@ def parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     brain_areas = {value for value in probe_channel_map.values() if value not in ['out', 'void']}
     for brain_area in brain_areas:
         brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
-        brain_area_neurons = np.where(np.isin(max_amplitude_channel, brain_area_channels))[0]
+        brain_area_neurons = np.where(np.isin(chan_best, brain_area_channels))[0]
         brain_area_spikes[brain_area] = binned_spikes[brain_area_neurons, :]
 
     return brain_area_spikes
@@ -170,6 +172,9 @@ class ParsedNWBFile:
             self.bin_size = 0.01  # 10 ms bins hardcoded for now
             self.spike_data = self.parse_spiking_data()
 
+            # Pyaldata dataframe
+            self.pyaldata_df = None
+
     def parse_nwb_pycontrol_states(self):
         """
         Parse pycontrol output from behavioural processing module of .nwb file
@@ -225,6 +230,9 @@ class ParsedNWBFile:
         df_events.sort_values(by='timestamp', ascending=True, inplace=True)
         df_events.reset_index(drop=True, inplace=True)
 
+        # TODO: fix units
+        df_events['timestamp'] = df_events['timestamp'] / 1000
+
         return df_events
 
     def parse_motion_sensors(self):
@@ -258,11 +266,69 @@ class ParsedNWBFile:
 
         return spike_data_dict
 
+    def add_pycontrol_events_to_df(self):
+        for row in self.pyaldata_df.items():
+            trial_specific_events = self.pycontrol_events[
+                (self.pycontrol_events['column_a'] >= row['idx_trial_start'])
+                & (self.pycontrol_events['column_a'] <= row['idx_trial_end'])
+            ]
+            breakpoint()
+
+
+
+    def add_motion_sensor_data_to_df(self):
+        pass
+
+    def add_anipose_data_to_df(self):
+        pass
+
+    def add_spiking_data_to_df(self):
+        pass
+
     def run_conversion(self):
+
+        self.pyaldata_df = pd.DataFrame(columns=[
+            'mouse',  # TODO
+            'date',
+            'trial_id',
+            'trial_name',
+            'bin_size',
+            'idx_trial_start',
+            'idx_trial_end'
+        ])
+
+        # TODO: Fix time units
+        start_time = 0.0
+        end_time = self.pycontrol_states.stop_time.values[-1] / 1000  # To seconds
+        number_of_bins = int(np.floor((end_time - start_time) / self.bin_size))
+        self.pyaldata_df['trial_id'] = self.pycontrol_states.start_time.index
+        self.pyaldata_df['bin_size'] = self.bin_size
+
+        # Start and stop times of each state
+        self.pyaldata_df['idx_trial_start'] = np.ceil(self.pycontrol_states.start_time.values[:] / 1000 / self.bin_size).astype(int)
+        self.pyaldata_df['idx_trial_end'] = np.floor(self.pycontrol_states.stop_time.values[:] / 1000 / self.bin_size).astype(int)
+        self.pyaldata_df['trial_name'] = self.pycontrol_states.state_name[:]
+
+        if self.pyaldata_df.idx_trial_end.values[1] != number_of_bins:
+            warnings.warn(
+                f'Extract number of bins: {self.pyaldata_df.idx_trial_end.values[-1]} does not match calculated '
+                f'number of bins: {number_of_bins} '
+            )
+
+        self.add_pycontrol_events_to_df()
+
+        self.add_motion_sensor_data_to_df()
+
+        self.add_anipose_data_to_df()
+
+        self.add_spiking_data_to_df()
+
+
         breakpoint()
-        df = pd.DataFrame(
-            columns=['trial_id', 'state', 'start_time', 'stop_time', 'event_name']
-        )
+
+
+
+
 
         pass
 

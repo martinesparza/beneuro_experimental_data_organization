@@ -69,6 +69,7 @@ def nwb_to_pyaldata(
         nwbfile_path,
     )
 
+
 @app.command()
 def to_nwb(
     local_session_path: Annotated[
