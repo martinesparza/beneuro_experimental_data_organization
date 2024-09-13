@@ -52,4 +52,7 @@ filterwarnings = [
 ]
 markers = [
     "processing: These tests are only required when installing with the processing modules.",
+    "needs_experimental_data: These tests need experimental data."
 ]
+# don't run tests that need experimental data by default
+addopts = "-m 'not needs_experimental_data'"
