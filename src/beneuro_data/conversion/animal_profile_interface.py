@@ -4,7 +4,8 @@ from pathlib import Path
 import dateutil.tz
 import pandas as pd
 from neuroconv.basedatainterface import BaseDataInterface
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.file import Subject
 
@@ -12,7 +13,7 @@ from beneuro_data.data_validation import EXPECTED_DATE_FORMAT, validate_session_
 
 
 class AnimalProfileInterface(BaseDataInterface):
-    def __init__(self, session_path: FilePathType):
+    def __init__(self, session_path: FilePath):
         # file_path is the session path
         super().__init__(file_path=session_path)
 

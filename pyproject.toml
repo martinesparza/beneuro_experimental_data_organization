@@ -25,7 +25,7 @@ optional = true
 cuda-python = "^12.2.0"
 docker = "^7.1.0"
 spikeinterface = "0.101"
-neuroconv = {extras = ["kilosort", "phy", "spikeglx"], version = "^0.4.8"}
+neuroconv = {extras = ["kilosort", "phy", "spikeglx"], version = "0.6.3"}
 ndx-pose = "^0.1.1"
 
 [build-system]
@@ -52,4 +52,7 @@ filterwarnings = [
 ]
 markers = [
     "processing: These tests are only required when installing with the processing modules.",
+    "needs_experimental_data: These tests need experimental data."
 ]
+# don't run tests that need experimental data by default
+addopts = "-m 'not needs_experimental_data'"

@@ -9,7 +9,8 @@ import spikeinterface.extractors as se
 from ndx_pose import PoseEstimation, PoseEstimationSeries
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
 from neuroconv.tools.signal_processing import get_rising_frames_from_ttl
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
+from pydantic import FilePath
 from pynwb import NWBFile
 
 from beneuro_data.data_validation import _find_spikeglx_recording_folders_in_session
@@ -50,9 +51,7 @@ class AniposeInterface(BaseTemporalAlignmentInterface):
         ("right_ankle_angle", ["right_knee", "right_ankle", "right_foot"]),
     )
 
-    def __init__(
-        self, csv_path: FilePathType, raw_session_path: Optional[FilePathType] = None
-    ):
+    def __init__(self, csv_path: FilePath, raw_session_path: Optional[FilePath] = None):
         super().__init__()
 
         self.csv_path = Path(csv_path)
