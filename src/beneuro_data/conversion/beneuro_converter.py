@@ -53,7 +53,7 @@ class BeNeuroConverter(NWBConverter):
             "file_path" : str(session_folder_path)
         },
         Kilosort = {
-            "processed_recording_path" : str(processed_session_path),
+            "folder_path" : str(processed_session_path),
         },
         AnimalProfile = {
             "session_path" : str(session_folder_path),
