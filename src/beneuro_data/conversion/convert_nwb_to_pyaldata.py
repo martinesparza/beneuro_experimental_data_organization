@@ -360,7 +360,7 @@ class ParsedNWBFile:
         return
 
     def add_spiking_data_to_df(self):
-        for probe_key in self.spike_data.leys():
+        for probe_key in self.spike_data.keys():
             for brain_area_key, brain_area_spiking in self.spike_data[probe_key].items():
                 pass
                 # TODO: Have to add the
