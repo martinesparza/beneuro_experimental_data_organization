@@ -124,7 +124,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
 
             # Copied function from nwb to add templates to nwb
             add_one_probe_to_nwbfile(
-                sorting_interface=self.kilosort_interface,
+                sorting_interface=kilosort_interface,
                 nwbfile=nwbfile,
                 metadata=metadata,
                 write_as="processing",
