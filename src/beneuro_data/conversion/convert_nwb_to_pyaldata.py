@@ -272,6 +272,10 @@ class ParsedNWBFile:
         spike_data_dict = {}
 
         # TODO: Make custom channel map option in case we dont agree with pinpoint
+
+        # TODO: Enforce only good/mua units
+
+        # TODO: add unit guides [nChannels, 2]. Number of units per channel
         for probe_units in self.ephys_module.keys():
             spike_data_dict[probe_units] = _parse_pynwb_probe(
                 probe_units=self.ephys_module[probe_units],
