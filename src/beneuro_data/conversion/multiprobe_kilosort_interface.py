@@ -4,21 +4,20 @@ from typing import Optional
 import numpy as np
 from neuroconv.datainterfaces import KiloSortSortingInterface
 from neuroconv.tools.spikeinterface import write_sorting_to_nwbfile
-from neuroconv.utils import DeepDict, FolderPathType
+from neuroconv.utils import DeepDict
+from pydantic import DirectoryPath
 from pynwb import NWBFile
 
 
 class MultiProbeKiloSortInterface(KiloSortSortingInterface):
     def __init__(
         self,
-        # folder_paths: tuple[FolderPathType, ...],
-        folder_path: FolderPathType,
+        # folder_paths: tuple[DirectoryPath, ...],
+        folder_path: DirectoryPath,
         keep_good_only: bool = False,
         verbose: bool = True,
     ):
-        self.kilosort_folder_paths = list(
-            Path(folder_path).glob("**/sorter_output")
-        )
+        self.kilosort_folder_paths = list(Path(folder_path).glob("**/sorter_output"))
         self.probe_names = [
             ks_path.parent.name.split("_")[-1] for ks_path in self.kilosort_folder_paths
         ]
@@ -44,7 +43,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         for probe_name, kilosort_interface, kilosort_folder_path in zip(
             self.probe_names, self.kilosort_interfaces, self.kilosort_folder_paths
         ):
-            templates = np.load(kilosort_folder_path / 'templates.npy')
+            templates = np.load(kilosort_folder_path / "templates.npy")
 
             write_sorting_to_nwbfile(
                 sorting=kilosort_interface.sorting_extractor,
@@ -53,7 +52,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 write_as="processing",
                 units_name=f"units_{probe_name}",
                 units_description=f"Kilosorted units on {probe_name}",
-                waveform_means=templates
+                waveform_means=templates,
             )
 
     def get_metadata(self) -> DeepDict:

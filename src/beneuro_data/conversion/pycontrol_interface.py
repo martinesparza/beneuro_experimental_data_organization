@@ -9,7 +9,8 @@ from pathlib import Path
 import dateutil.tz
 import numpy as np
 from neuroconv.basetemporalalignmentinterface import BaseTemporalAlignmentInterface
-from neuroconv.utils import DeepDict, FilePathType
+from neuroconv.utils import DeepDict
+from pydantic import FilePath
 from pynwb import NWBFile
 from pynwb.behavior import BehavioralEvents, Position, SpatialSeries
 from pynwb.epoch import TimeIntervals
@@ -18,7 +19,7 @@ from .pycontrol_data_import import Event, Print, Session, State
 
 
 class PyControlInterface(BaseTemporalAlignmentInterface):
-    def __init__(self, file_path: FilePathType):
+    def __init__(self, file_path: FilePath):
         super().__init__(file_path=file_path)
         self.reload_session()
 
