@@ -400,10 +400,14 @@ class ParsedNWBFile:
 
     def add_spiking_data_to_df(self):
         for probe_key in self.spike_data.keys():
-            for brain_area_key, brain_area_spiking in self.spike_data[probe_key].items():
-                pass
-                # TODO:
-                # Timestamps are already binned
+            for brain_area_key, brain_area_spike_data in self.spike_data[probe_key].items():
+
+                # TODO: Add spike data
+                # Add unit guide
+                self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['unit_guide']] * len(self.pyaldata_df)
+
+                # Add unit guide
+                self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
 
 
                 # # Add columns
@@ -417,14 +421,12 @@ class ParsedNWBFile:
                 #     columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y','z'],
                 #     timestamp_column=None
                 # )
-
-
-
+        breakpoint()
         pass
 
     def run_conversion(self):
         """
-        Main run routine for pyaldata conversion
+        Main routine for pyaldata conversion
 
         Returns
         -------
