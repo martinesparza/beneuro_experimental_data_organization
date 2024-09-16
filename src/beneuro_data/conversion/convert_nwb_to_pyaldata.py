@@ -208,6 +208,10 @@ class ParsedNWBFile:
         with NWBHDF5IO(nwbpath, mode="r") as io:
             self.nwbfile = io.read()
 
+            # General data
+            self.subject_id = self.nwbfile.subject.subject_id
+            self.session_datetime = self.nwbfile.session_start_time
+
             # Processing modules
             self.behav_module = self.nwbfile.processing["behavior"].data_interfaces
             self.ephys_module = self.nwbfile.processing["ecephys"].data_interfaces
@@ -342,7 +346,12 @@ class ParsedNWBFile:
 
         return
 
-    def add_pycontrol_events_to_df(self, unique_events):
+    def add_pycontrol_events_to_df(self):
+
+        unique_events = self.pycontrol_events['event'].unique()
+        for unique_event in unique_events:
+            self.pyaldata_df[f'{unique_event}_values'] = np.nan
+            self.pyaldata_df[f'{unique_event}_idx'] = np.nan
 
         # Add timestamp_idx
         self.pycontrol_events['timestamp_idx'] = np.floor(self.pycontrol_events.timestamp.values[:] / 1000 / self.bin_size).astype(int)
@@ -420,8 +429,12 @@ class ParsedNWBFile:
                     columns_to_read_from=[col for col in tmp_df.columns if col != 'timestamp_idx'],
                     timestamp_column=None
                 )
-                # breakpoint()
-        pass
+        return
+
+    def add_mouse_and_datetime(self):
+        self.pyaldata_df['mouse'] = [self.subject_id] * len(self.pyaldata_df)
+        self.pyaldata_df['date_time'] = [self.session_datetime.strftime('%Y-%m-%d %H:%M:%S %Z%z')] * len(self.pyaldata_df)
+        return
 
     def run_conversion(self):
         """
@@ -434,29 +447,25 @@ class ParsedNWBFile:
 
         print("Converting parsed nwb data into pyaldata format")
 
-        # Initialize all the necessary columns
-        # state columns
-        state_columns = ['mouse', 'date', 'trial_id', 'trial_name', 'trial_length',
+        # Define all the necessary columns
+        columns = ['mouse', 'date_time', 'trial_id', 'trial_name', 'trial_length',
                          'bin_size', 'idx_trial_start', 'idx_trial_end']
-        # event columns
-        unique_events = self.pycontrol_events['event'].unique()
-        event_columns = []
-        for unique_event in unique_events:
-            event_columns.append(f'{unique_event}_values')
-            event_columns.append(f'{unique_event}_idx')
-        # All columns
-        columns = state_columns + event_columns
 
         # Initialize dataframe
         self.pyaldata_df = pd.DataFrame(columns=columns)
 
-        # Add information
+        # Add behaviour data
         self.add_pycontrol_states_to_df()
-        self.add_pycontrol_events_to_df(unique_events)
+        self.add_pycontrol_events_to_df()
         self.add_motion_sensor_data_to_df()
         self.add_anipose_data_to_df()
+
+        # Add ecephys data
         self.add_spiking_data_to_df()
 
+        # Add general information
+        self.add_mouse_and_datetime()
+        breakpoint()
         return
 
     def save_to_csv(self):
@@ -469,7 +478,7 @@ def convert_nwb_to_pyaldata(nwbfile_path):
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
     parsed_nwbfile.save_to_csv()
-    # breakpoint()
+    breakpoint()
 
 
     return
