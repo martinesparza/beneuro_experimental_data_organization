@@ -13,6 +13,7 @@ from pynwb.behavior import SpatialSeries
 from pynwb.misc import Units
 
 
+
 def _bin_spikes(probe_units: Units, bin_size: float) -> np.array:
     """
     Bin spikes from pynwb from one probe
@@ -49,6 +50,28 @@ def _bin_spikes(probe_units: Units, bin_size: float) -> np.array:
     return binned_spikes
 
 
+def _add_unit_counter_to_unit_guide(unit_guide):
+
+    # Initialize the counter and new_unit_guide
+    counter = 1
+    new_unit_guide = []
+
+    # Iterate through the array
+    for i in range(len(unit_guide)):
+        if i > 0 and unit_guide[i] == unit_guide[i - 1]:
+            # Increment counter if the current value is the same as the previous one
+            counter += 1
+        else:
+            # Reset the counter if the value changes
+            counter = 1
+
+        new_unit_guide.append([unit_guide[i], counter])
+
+    # Convert the new array to a NumPy array
+    new_unit_guide = np.array(new_unit_guide)
+    return new_unit_guide
+
+
 def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
 
     # This returns a neurons x bin array of 0s and 1s
@@ -72,14 +95,26 @@ def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     probe_electrode_locations_df = electrode_info_df[electrode_info_df['group_name'] == probe_units.name.split('_')[-1]]
     probe_channel_map = probe_electrode_locations_df['location'].to_dict()
 
-    brain_area_spikes = {}
+    brain_area_spikes_and_unit_guide = {}
     brain_areas = {value for value in probe_channel_map.values() if value not in ['out', 'void']}
+
     for brain_area in brain_areas:
         brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
         brain_area_neurons = np.where(np.isin(chan_best, brain_area_channels))[0]
-        brain_area_spikes[brain_area] = binned_spikes[brain_area_neurons, :]
 
-    return brain_area_spikes
+        # breakpoint()
+
+        unsorted_unit_guide = chan_best[brain_area_neurons]
+        sorted_unit_guide_indices = np.argsort(unsorted_unit_guide)  # Variable with sorted indices
+        sorted_unit_guide = unsorted_unit_guide[sorted_unit_guide_indices]
+        sorted_unit_guide = _add_unit_counter_to_unit_guide(sorted_unit_guide)  # Add counter column
+
+        # Take neurons that are brain area specific and them sort them according to unit guide
+        brain_area_spikes_and_unit_guide[brain_area] = {'spikes': binned_spikes[brain_area_neurons, :][sorted_unit_guide_indices, :]}
+        brain_area_spikes_and_unit_guide[brain_area]['unit_guide'] = sorted_unit_guide
+        brain_area_spikes_and_unit_guide[brain_area]['KSLabel'] = probe_units.KSLabel[brain_area_neurons][sorted_unit_guide_indices]
+
+    return brain_area_spikes_and_unit_guide
 
 
 def _parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
@@ -432,7 +467,7 @@ def convert_nwb_to_pyaldata(nwbfile_path):
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
     parsed_nwbfile.run_conversion()
     parsed_nwbfile.save_to_csv()
-    breakpoint()
+    # breakpoint()
 
 
     return
