@@ -204,8 +204,9 @@ def _add_data_to_trial(df_to_add_to, new_data_column, df_to_add_from, columns_to
 
 class ParsedNWBFile:
 
-    def __init__(self, nwbpath):
-        with NWBHDF5IO(nwbpath, mode="r") as io:
+    def __init__(self, nwbfile_path):
+        with NWBHDF5IO(nwbfile_path, mode="r") as io:
+            self.nwbfile_path = nwbfile_path
             self.nwbfile = io.read()
 
             # General data
@@ -344,6 +345,8 @@ class ParsedNWBFile:
                 f'Extract number of bins: {self.pyaldata_df.idx_trial_end.values[-1]} does not match calculated '
                 f'number of bins: {number_of_bins} ')
 
+        self.pyaldata_df['trial_length'] = self.pyaldata_df['idx_trial_end'] - self.pyaldata_df['idx_trial_start'] + 1
+
         return
 
     def add_pycontrol_events_to_df(self):
@@ -465,20 +468,24 @@ class ParsedNWBFile:
 
         # Add general information
         self.add_mouse_and_datetime()
-        breakpoint()
         return
 
     def save_to_csv(self):
-        print('Saved the data somewhere i guess')
-        pass
+        path_to_save = self.nwbfile_path.parent / f'{self.nwbfile_path.parent.name}_pyaldata.csv'
+        self.pyaldata_df.to_csv(path_to_save, index=False)
+        print(f'Saved pyaldata file in {path_to_save}')
+        return
 
 
 def convert_nwb_to_pyaldata(nwbfile_path):
 
+    # Parse nwb data
     parsed_nwbfile = ParsedNWBFile(nwbfile_path)
-    parsed_nwbfile.run_conversion()
-    parsed_nwbfile.save_to_csv()
-    breakpoint()
 
+    # Convert to pyaldata
+    parsed_nwbfile.run_conversion()
+
+    # Save in processed
+    parsed_nwbfile.save_to_csv()
 
     return
