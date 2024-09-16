@@ -346,7 +346,7 @@ class ParsedNWBFile:
     def add_anipose_data_to_df(self):
         for anipose_key, anipose_value in self.anipose_data.items():
             # Bin timestamps
-            # TODO: Fix time units, since here we are already in seconds its all good
+            # TODO: Predefine time units during nwb conversion
             anipose_value['timestamp_idx'] = np.floor(anipose_value.timestamps.values[:] / self.bin_size).astype(int)
 
             # Add columns
@@ -367,7 +367,7 @@ class ParsedNWBFile:
         for probe_key in self.spike_data.keys():
             for brain_area_key, brain_area_spiking in self.spike_data[probe_key].items():
                 pass
-                # TODO: Have to add the
+                # TODO:
                 # Timestamps are already binned
 
 
@@ -417,7 +417,7 @@ class ParsedNWBFile:
         self.add_pycontrol_states_to_df()
         self.add_pycontrol_events_to_df(unique_events)
         self.add_motion_sensor_data_to_df()
-        self.add_anipose_data_to_df()  # TODO
+        self.add_anipose_data_to_df()
         self.add_spiking_data_to_df()  # TODO
 
         return
