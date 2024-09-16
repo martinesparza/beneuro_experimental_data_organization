@@ -102,8 +102,7 @@ def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
         brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
         brain_area_neurons = np.where(np.isin(chan_best, brain_area_channels))[0]
 
-        # breakpoint()
-
+        # Define unit guide
         unsorted_unit_guide = chan_best[brain_area_neurons]
         sorted_unit_guide_indices = np.argsort(unsorted_unit_guide)  # Variable with sorted indices
         sorted_unit_guide = unsorted_unit_guide[sorted_unit_guide_indices]
@@ -353,10 +352,10 @@ class ParsedNWBFile:
             unique_event_df = self.pycontrol_events[self.pycontrol_events['event'] == unique_event]
             self.pyaldata_df = _add_data_to_trial(
                 df_to_add_to=self.pyaldata_df,
-                new_data_column=f'{unique_event}_event_values',
+                new_data_column=f'{unique_event}_values',
                 df_to_add_from=unique_event_df,
                 columns_to_read_from='value',
-                timestamp_column=f'{unique_event}_event_idx'
+                timestamp_column=f'{unique_event}_idx'
             )
 
         return
@@ -402,26 +401,26 @@ class ParsedNWBFile:
         for probe_key in self.spike_data.keys():
             for brain_area_key, brain_area_spike_data in self.spike_data[probe_key].items():
 
-                # TODO: Add spike data
                 # Add unit guide
                 self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['unit_guide']] * len(self.pyaldata_df)
 
                 # Add unit guide
-                self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
+                self.pyaldata_df[f'{brain_area_key}_KSLabel'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
 
+                # TODO: Add spike data
+                self.pyaldata_df[f'{brain_area_key}_spikes'] = np.nan
+                tmp_df = pd.DataFrame(brain_area_spike_data['spikes'].T)  # Transpose
+                tmp_df['timestamp_idx'] = tmp_df.index  # Add timestamp for the following function
 
-                # # Add columns
-                # self.pyaldata_df[brain_area_key] = np.nan
-                #
-                # # Add data
-                # self.pyaldata_df = _add_data_to_trial(
-                #     df_to_add_to=self.pyaldata_df,
-                #     new_data_column=anipose_key,
-                #     df_to_add_from=anipose_value,
-                #     columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y','z'],
-                #     timestamp_column=None
-                # )
-        breakpoint()
+                # Add data
+                self.pyaldata_df = _add_data_to_trial(
+                    df_to_add_to=self.pyaldata_df,
+                    new_data_column=f'{brain_area_key}_spikes',
+                    df_to_add_from=tmp_df,
+                    columns_to_read_from=[col for col in tmp_df.columns if col != 'timestamp_idx'],
+                    timestamp_column=None
+                )
+                # breakpoint()
         pass
 
     def run_conversion(self):
@@ -443,11 +442,12 @@ class ParsedNWBFile:
         unique_events = self.pycontrol_events['event'].unique()
         event_columns = []
         for unique_event in unique_events:
-            event_columns.append(f'{unique_event}_event_values')
-            event_columns.append(f'{unique_event}_event_idx')
+            event_columns.append(f'{unique_event}_values')
+            event_columns.append(f'{unique_event}_idx')
         # All columns
         columns = state_columns + event_columns
 
+        # Initialize dataframe
         self.pyaldata_df = pd.DataFrame(columns=columns)
 
         # Add information
@@ -455,7 +455,7 @@ class ParsedNWBFile:
         self.add_pycontrol_events_to_df(unique_events)
         self.add_motion_sensor_data_to_df()
         self.add_anipose_data_to_df()
-        self.add_spiking_data_to_df()  # TODO
+        self.add_spiking_data_to_df()
 
         return
 
