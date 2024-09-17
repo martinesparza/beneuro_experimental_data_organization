@@ -219,9 +219,10 @@ def _add_data_to_trial(df_to_add_to, new_data_column, df_to_add_from, columns_to
 
 class ParsedNWBFile:
 
-    def __init__(self, nwbfile_path):
+    def __init__(self, nwbfile_path, verbose):
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
             self.nwbfile_path = nwbfile_path
+            self.verbose = verbose
             self.nwbfile = io.read()
 
             # General data
@@ -257,8 +258,8 @@ class ParsedNWBFile:
             Dictionary containing states, event, and prints of pycontrol during execution
 
         """
-
-        print("Parsing pycontrol states")
+        if self.verbose:
+            print("Parsing pycontrol states")
 
         data_dict = {col: self.behav_module["behavioral_states"][col].data[:] for col in
             self.behav_module["behavioral_states"].colnames}
@@ -266,7 +267,8 @@ class ParsedNWBFile:
         return df
 
     def parse_nwb_pycontrol_events(self):
-        print("Parsing pycontrol events")
+        if self.verbose:
+            print("Parsing pycontrol events")
 
         behav_events_time_series = self.behav_module['behavioral_events'].time_series[
             'behavioral events']
@@ -305,13 +307,15 @@ class ParsedNWBFile:
         return df_events
 
     def parse_motion_sensors(self):
-        print("Parsing motion sensors")
+        if self.verbose:
+            print("Parsing motion sensors")
         ball_position_spatial_series = self.behav_module['Position'].spatial_series[
             'Ball position']
         return _parse_spatial_series(ball_position_spatial_series)
 
     def parse_anipose_output(self):
-        print("Parsing anipose data")
+        if self.verbose:
+            print("Parsing anipose data")
         anipose_data_dict = self.behav_module['Pose estimation'].pose_estimation_series
 
         parsed_anipose_data_dict = {}
@@ -322,7 +326,8 @@ class ParsedNWBFile:
         return parsed_anipose_data_dict
 
     def parse_spiking_data(self):
-        print(f"Parsing spiking data. Found probes {list(self.ephys_module.keys())}")
+        if self.verbose:
+            print(f"Parsing spiking data. Found probes {list(self.ephys_module.keys())}")
         spike_data_dict = {}
 
         # TODO: Make custom channel map option in case we dont agree with pinpoint
@@ -459,8 +464,8 @@ class ParsedNWBFile:
         -------
 
         """
-
-        print("Converting parsed nwb data into pyaldata format")
+        if self.verbose:
+            print("Converting parsed nwb data into pyaldata format")
 
         # Define all the necessary columns
         columns = ['mouse', 'date_time', 'trial_id', 'trial_name', 'trial_length',
@@ -505,10 +510,10 @@ class ParsedNWBFile:
         return
 
 
-def convert_nwb_to_pyaldata(nwbfile_path):
+def convert_nwb_to_pyaldata(nwbfile_path, verbose):
 
     # Parse nwb data
-    parsed_nwbfile = ParsedNWBFile(nwbfile_path)
+    parsed_nwbfile = ParsedNWBFile(nwbfile_path, verbose)
 
     # Convert to pyaldata
     parsed_nwbfile.run_conversion()

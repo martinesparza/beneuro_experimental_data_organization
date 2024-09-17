@@ -29,12 +29,12 @@ def nwb_to_pyaldata(
             help="Path to processed session directory"
         ),
     ],
-    default_channel_map: Annotated[
+    verbose: Annotated[
         bool,
         typer.Option(
-            "--default-channel-map/--custom-channel-map",
-            help="Use the default channel from .nwb file or use a custom one available in processed session folder"),
-    ] = True,
+            help="Verbosity on pyaldata conversion"
+        )
+    ] = False
 ):
     """
     Convert a session's data to from NWB to pyaldata form, using a default channel map or a custom one
@@ -67,6 +67,7 @@ def nwb_to_pyaldata(
     # Run conversion
     convert_nwb_to_pyaldata(
         nwbfile_path,
+        verbose
     )
 
 
