@@ -197,7 +197,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 description=f'{probe.annotations["model_name"]}. Location is the output from '
                 f"pinpoint and corresponds to the targeted brain area",
                 location=(
-                    pinpoint_trajectories[probe_name] if pinpoint_trajectories else None
+                    pinpoint_trajectories[probe_name] if pinpoint_trajectories else "No pinpoint trajectory"
                 ),
                 device=nwbfile.devices[probe_name],
             )
@@ -211,7 +211,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 if channel_map is not None:
                     contact_location = channel_map[probe_name].area_name[contact_id]
                 else:
-                    contact_location = None
+                    contact_location = "nan"
                 nwbfile.add_electrode(
                     group=nwbfile.electrode_groups[probe_name],
                     x=float(x),
