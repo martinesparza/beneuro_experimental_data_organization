@@ -13,7 +13,6 @@ from pynwb.behavior import SpatialSeries
 from pynwb.misc import Units
 
 
-
 def _bin_spikes(probe_units: Units, bin_size: float) -> np.array:
     """
     Bin spikes from pynwb from one probe
@@ -51,6 +50,13 @@ def _bin_spikes(probe_units: Units, bin_size: float) -> np.array:
 
 
 def _add_unit_counter_to_unit_guide(unit_guide):
+
+    warnings.warn(
+        '_add_unit_counter_to_unit_guide() is deprecated. Unit guides are now called chan_best'
+        ' and do not have a second column'
+    )
+
+    return
 
     # Initialize the counter and new_unit_guide
     counter = 1
@@ -95,25 +101,37 @@ def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
     probe_electrode_locations_df = electrode_info_df[electrode_info_df['group_name'] == probe_units.name.split('_')[-1]]
     probe_channel_map = probe_electrode_locations_df['location'].to_dict()
 
-    brain_area_spikes_and_unit_guide = {}
-    brain_areas = {value for value in probe_channel_map.values() if value not in ['out', 'void']}
+    no_pinpoint_channel_map = all(value == 'nan' for value in probe_channel_map.values())
+
+    brain_area_spikes_and_chan_best = {}
+    if no_pinpoint_channel_map:
+        brain_areas = {'all'}
+    else:
+        brain_areas = {value for value in probe_channel_map.values() if value not in ['out', 'void']}
 
     for brain_area in brain_areas:
-        brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
+
+        if no_pinpoint_channel_map:  # Take all channels if there is no channel map
+            brain_area_channels = [key for key, value in probe_channel_map.items()]
+        else:
+            brain_area_channels = [key for key, value in probe_channel_map.items() if value == brain_area]
+
         brain_area_neurons = np.where(np.isin(chan_best, brain_area_channels))[0]
 
         # Define unit guide
-        unsorted_unit_guide = chan_best[brain_area_neurons]
-        sorted_unit_guide_indices = np.argsort(unsorted_unit_guide)  # Variable with sorted indices
-        sorted_unit_guide = unsorted_unit_guide[sorted_unit_guide_indices]
-        sorted_unit_guide = _add_unit_counter_to_unit_guide(sorted_unit_guide)  # Add counter column
+        unsorted_chan_best = chan_best[brain_area_neurons]
+        sorted_chan_best_indices = np.argsort(unsorted_chan_best)  # Variable with sorted indices
+        sorted_chan_best = unsorted_chan_best[sorted_chan_best_indices]
+
+        # Deprecated the sunit_guide naming in favor of channel best for each neuron
+        # sorted_unit_guide = _add_unit_counter_to_unit_guide(sorted_unit_guide)  # Add counter column
 
         # Take neurons that are brain area specific and them sort them according to unit guide
-        brain_area_spikes_and_unit_guide[brain_area] = {'spikes': binned_spikes[brain_area_neurons, :][sorted_unit_guide_indices, :]}
-        brain_area_spikes_and_unit_guide[brain_area]['unit_guide'] = sorted_unit_guide
-        brain_area_spikes_and_unit_guide[brain_area]['KSLabel'] = probe_units.KSLabel[brain_area_neurons][sorted_unit_guide_indices]
+        brain_area_spikes_and_chan_best[brain_area] = {'spikes': binned_spikes[brain_area_neurons, :][sorted_chan_best_indices, :]}
+        brain_area_spikes_and_chan_best[brain_area]['unit_guide'] = sorted_chan_best
+        brain_area_spikes_and_chan_best[brain_area]['KSLabel'] = probe_units.KSLabel[brain_area_neurons][sorted_chan_best_indices]
 
-    return brain_area_spikes_and_unit_guide
+    return brain_area_spikes_and_chan_best
 
 
 def _parse_pose_estimation_series(pose_est_series: PoseEstimationSeries) -> pd.DataFrame:
@@ -312,9 +330,6 @@ class ParsedNWBFile:
 
         # TODO: Make custom channel map option in case we dont agree with pinpoint
 
-        # TODO: Enforce only good/mua units
-
-        # TODO: add unit guides [nChannels, 2]. Number of units per channel
         for probe_units in self.ephys_module.keys():
             spike_data_dict[probe_units] = _parse_pynwb_probe(
                 probe_units=self.ephys_module[probe_units],
@@ -472,6 +487,8 @@ class ParsedNWBFile:
 
     def save_to_csv(self):
         path_to_save = self.nwbfile_path.parent / f'{self.nwbfile_path.parent.name}_pyaldata.csv'
+
+        # TODO check if a file already exists
         self.pyaldata_df.to_csv(path_to_save, index=False)
         print(f'Saved pyaldata file in {path_to_save}')
         return
