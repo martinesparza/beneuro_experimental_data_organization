@@ -123,9 +123,6 @@ def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
         sorted_chan_best_indices = np.argsort(unsorted_chan_best)  # Variable with sorted indices
         sorted_chan_best = unsorted_chan_best[sorted_chan_best_indices]
 
-        # Deprecated the sunit_guide naming in favor of channel best for each neuron
-        # sorted_unit_guide = _add_unit_counter_to_unit_guide(sorted_unit_guide)  # Add counter column
-
         # Take neurons that are brain area specific and them sort them according to unit guide
         brain_area_spikes_and_chan_best[brain_area] = {'spikes': binned_spikes[brain_area_neurons, :][sorted_chan_best_indices, :]}
         brain_area_spikes_and_chan_best[brain_area]['unit_guide'] = sorted_chan_best
@@ -488,9 +485,23 @@ class ParsedNWBFile:
     def save_to_csv(self):
         path_to_save = self.nwbfile_path.parent / f'{self.nwbfile_path.parent.name}_pyaldata.csv'
 
-        # TODO check if a file already exists
-        self.pyaldata_df.to_csv(path_to_save, index=False)
-        print(f'Saved pyaldata file in {path_to_save}')
+        if path_to_save.exists():
+            # Prompt the user with an interactive menu
+            while True:
+                user_input = input(
+                    f"File '{path_to_save}' already exists. Do you want to overwrite it? (y/n): ").lower().strip()
+                if user_input == 'y':
+                    self.pyaldata_df.to_csv(path_to_save, index=False)
+                    print(f"File '{path_to_save}' has been overwritten.")
+                    break
+                elif user_input == 'n':
+                    print(f"File '{path_to_save}' was not overwritten.")
+                    break
+                else:
+                    print("Please enter 'y' for yes or 'n' for no.")
+        else:
+            self.pyaldata_df.to_csv(path_to_save, index=False)
+            print(f'Saved pyaldata file in {path_to_save}')
         return
 
 
