@@ -23,10 +23,10 @@ app = typer.Typer()
 
 @app.command()
 def nwb_to_pyaldata(
-    local_session_path: Annotated[
-        Path,
+    session_name: Annotated[
+        str,
         typer.Argument(
-            help="Path to processed session directory"
+            help="Session name to convert"
         ),
     ],
     verbose: Annotated[
@@ -40,14 +40,12 @@ def nwb_to_pyaldata(
     Convert a session's data to from NWB to pyaldata form, using a default channel map or a custom one
 
     """
+    # TODO: Make custom channel map option in case we dont agree with pinpoint
+
     from beneuro_data.conversion.convert_nwb_to_pyaldata import convert_nwb_to_pyaldata
 
     config = _load_config()
-
-    # TODO: Make custom channel map option in case we dont agree with pinpoint
-
-    # TODO: Implement main argument to be session name and automatically look for NWB
-    #  file in processed
+    local_session_path = config.get_local_session_path(session_name, 'processed')
 
     if not local_session_path.absolute().is_dir():
         raise ValueError("Session path must be a directory.")

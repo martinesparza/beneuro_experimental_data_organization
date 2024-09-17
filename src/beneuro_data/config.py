@@ -2,7 +2,6 @@ from pathlib import Path
 
 from pydantic.v1 import BaseSettings
 
-
 def _get_package_path() -> Path:
     """
     Returns the path to the package directory.
@@ -29,6 +28,15 @@ class Config(BaseSettings):
         "channel_map.txt",
     )
     EXTENSIONS_TO_RENAME_AND_UPLOAD: tuple[str, ...] = (".txt",)
+
+    def get_local_session_path(self, session_name: str, processed_or_raw: str):
+        if processed_or_raw not in ['processed', 'raw']:
+            raise ValueError(f'{processed_or_raw} option not supported. Input must be either'
+                             f'"processed" or "raw"')
+        animal = session_name[:4]
+        local_session_path = self.LOCAL_PATH / processed_or_raw / animal / session_name
+        return local_session_path
+
 
     class Config:
         env_file = _get_env_path()
