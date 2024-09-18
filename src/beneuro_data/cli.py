@@ -36,7 +36,7 @@ def to_nwb(
     run_kilosort: Annotated[
         bool,
         typer.Option("--kilosort/--no-kilosort", help="Run Kilosort 4 or not"),
-    ] = True,
+    ] = False,
     sort_probe: Annotated[
         Optional[List[str]],
         typer.Option(
