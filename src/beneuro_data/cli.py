@@ -32,6 +32,7 @@ def nwb_to_pyaldata(
     verbose: Annotated[
         bool,
         typer.Option(
+            "--verbose/--no-verbose",
             help="Verbosity on pyaldata conversion"
         )
     ] = False
