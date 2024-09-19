@@ -43,6 +43,20 @@ def _try_loading_trajectory_file(raw_recording_path: Path) -> dict | None:
     with open(pinpoint_trajectory_file[0], "r") as f:
         trajectory_str = [l.strip() for l in f.readlines() if l.strip() != ""]
         probe_trajectory_pairs = list(zip(trajectory_str[::2], trajectory_str[1::2]))
+
+        # This should be either imec0 or imec1 to match spikeGLX
+        probe_names = [
+            probe_trajectory_pair[0] for probe_trajectory_pair in probe_trajectory_pairs
+        ]
+
+        for idx, probe_name in enumerate(probe_names):
+            if probe_name != f"imec{idx}":
+                warnings.warn(
+                    f"Pinpoint probes need to named either 'imec0' or 'imec1' to match spikeglx. "
+                    f"Skipping probe information loading"
+                )
+                return
+
         trajectory_dict = {
             probe: trajectory for probe, trajectory in probe_trajectory_pairs
         }
@@ -51,14 +65,14 @@ def _try_loading_trajectory_file(raw_recording_path: Path) -> dict | None:
 
 
 def _load_channel_map_information_from_pinpoint_probe(
-    channel_map__file_path: Path, pinpoint_probe_name: str
+    channel_map_file_path: Path, pinpoint_probe_name: str
 ) -> pd.DataFrame:
     """
     Extract the brain area of each electrode per probe
 
     Parameters
     ----------
-    channel_map__file_path :
+    channel_map_file_path :
         Pinpoint channel_map file to open
     pinpoint_probe_name :
         Key generated in pinpoint to identify the probe
@@ -68,21 +82,30 @@ def _load_channel_map_information_from_pinpoint_probe(
     Dataframe containing bran area of each electrode
 
     """
-    with open(channel_map__file_path, "r") as file:
+
+    with open(channel_map_file_path, "r") as file:
         channel_map_str = file.read().strip()
 
-    channel_map_str = channel_map_str.strip("[]").split('","')
-    data_string = ""
-    for item in channel_map_str:
-        if pinpoint_probe_name in item:
-            data_string = item.split(":", 1)[1]
-            break
+    channel_map_list = channel_map_str.strip("[]").split('","')
+    pinpoint_probe_names_in_channel_map = []
+    pinpoint_channel_maps = []
+    for probe_map in channel_map_list:
+        probe_map = probe_map.replace('"', "")
+        pinpoint_probe_names_in_channel_map.append(probe_map.split(":", 1)[0])
+        pinpoint_channel_maps.append(probe_map.split(":", 1)[1])
+
+    if pinpoint_probe_name not in pinpoint_probe_names_in_channel_map:
+        raise ValueError(
+            f"Probes name {pinpoint_probe_name} defined in *trajectory.txt file does not"
+            f" match probe_names in *channel_map.txt file {pinpoint_probe_names_in_channel_map}"
+        )
 
     # Split the string by ";" to separate each entry
-    entries = data_string.split(";")
+    index = pinpoint_probe_names_in_channel_map.index(pinpoint_probe_name)
+    pinpoint_channel_map = pinpoint_channel_maps[index].split(";")
     data = [
         dict(zip(["id", "area_number", "area_name", "area_color"], entry.split(",")))
-        for entry in entries
+        for entry in pinpoint_channel_map
     ]
 
     df = pd.DataFrame(data)
@@ -121,11 +144,15 @@ def _create_channel_map(
     channel_map = {}
     # Use pinpoint generate probe identifier to match probes between trajectories and channel_maps
     for probe in pinpoint_trajectory_dict.keys():
-        pinpoint_probe_name = pinpoint_trajectory_dict[probe].split(":")[0]
-        channel_map[probe] = _load_channel_map_information_from_pinpoint_probe(
-            channel_map__file_path=pinpoint_channel_map_file[0],
-            pinpoint_probe_name=pinpoint_probe_name,
-        )
+        try:
+            pinpoint_probe_name = pinpoint_trajectory_dict[probe].split(":")[0]
+            channel_map[probe] = _load_channel_map_information_from_pinpoint_probe(
+                channel_map_file_path=pinpoint_channel_map_file[0],
+                pinpoint_probe_name=pinpoint_probe_name,
+            )
+        except Exception as e:
+            warnings.warn(f"Problem loading channel map data: {str(e)}")
+            return
 
     return channel_map
 
