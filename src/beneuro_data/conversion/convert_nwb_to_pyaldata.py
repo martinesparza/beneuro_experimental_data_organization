@@ -221,34 +221,67 @@ class ParsedNWBFile:
 
     def __init__(self, nwbfile_path, verbose):
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
-            self.nwbfile_path = nwbfile_path
+            # General
+            self.bin_size = 0.01
             self.verbose = verbose
+
+            # Nwb file
+            self.nwbfile_path = nwbfile_path
             self.nwbfile = io.read()
 
-            # General data
-            self.subject_id = self.nwbfile.subject.subject_id
-            self.session_datetime = self.nwbfile.session_start_time
+            # Subject data
+            self.try_to_include_subject_info()
 
             # Processing modules
-            self.behav_module = self.nwbfile.processing["behavior"].data_interfaces
-            self.ephys_module = self.nwbfile.processing["ecephys"].data_interfaces
-
-            # Pycontrol outputs
-            self.pycontrol_states = self.parse_nwb_pycontrol_states()
-            self.pycontrol_events = self.parse_nwb_pycontrol_events()
-            self.pycontrol_motion_sensors = self.parse_motion_sensors()
+            self.try_to_parse_processing_module('behavior')
+            self.try_to_parse_processing_module('ecephys')
 
             # Anipose data
-            self.anipose_data = self.parse_anipose_output()
-
-            # Spiking data
-            self.bin_size = 0.01  # 10 ms bins hardcoded for now
-            self.spike_data = self.parse_spiking_data()
+            self.try_to_parse_anipose()
 
             # Pyaldata dataframe
             self.pyaldata_df = None
 
-    def parse_nwb_pycontrol_states(self):
+
+
+            # Spiking data
+
+    def try_to_include_subject_info(self):
+        if hasattr(self.nwbfile, "subject"):
+            self.subject_id = self.nwbfile.subject.subject_id
+            self.session_datetime = self.nwbfile.session_start_time
+        else:
+            warnings.warn(f'NWBFile {self.nwbfile} does not have subject information')
+
+        return
+
+    def try_to_parse_processing_module(self, processing_key: str):
+        if hasattr(self.nwbfile, processing_key):
+            if processing_key in self.nwbfile.processing.keys():
+                setattr(self.nwbfile, processing_key, self.nwbfile.processing[processing_key].data_interfaces)
+                if processing_key == 'behavior':
+
+                    # Pycontrol states and events. This is assumed to always be there
+                    self.parse_nwb_pycontrol_states()
+                    self.parse_nwb_pycontrol_events()
+
+                    # Also try to add motion sensor data if its available
+                    self.try_to_parse_motion_sensors()
+
+                    # Anipose data
+                    self.anipose_data = self.try_parsing_anipose_output()
+
+                elif processing_key == 'ecephys':
+                    self.spike_data = self.try_parsing_spike_data()
+
+            else:
+                warnings.warn(f'NWBFile {self.nwbfile.processing} does not have {processing_key}')
+        else:
+            warnings.warn(f'NWBFile {self.nwbfile} does not have processing module')
+
+        return
+
+    def parse_nwb_pycontrol_states(self) -> None:
         """
         Parse pycontrol output from behavioural processing module of .nwb file
 
@@ -261,18 +294,18 @@ class ParsedNWBFile:
         if self.verbose:
             print("Parsing pycontrol states")
 
-        data_dict = {col: self.behav_module["behavioral_states"][col].data[:] for col in
-            self.behav_module["behavioral_states"].colnames}
-        df = pd.DataFrame(data_dict)
-        return df
+        data_dict = {col: self.behavior["behavioral_states"][col].data[:] for col in
+                     self.behavior["behavioral_states"].colnames}
+        self.pycontrol_states = pd.DataFrame(data_dict)
+        return
 
-    def parse_nwb_pycontrol_events(self):
+    def parse_nwb_pycontrol_events(self) -> None:
         if self.verbose:
             print("Parsing pycontrol events")
 
-        behav_events_time_series = self.behav_module['behavioral_events'].time_series[
+        behav_events_time_series = self.behavior['behavioral_events'].time_series[
             'behavioral events']
-        print_events_time_series = self.behav_module['print_events'].time_series
+        print_events_time_series = self.behavior['print_events'].time_series
 
         # First make dataframe with behav events
         df_behav_events = pd.DataFrame()
@@ -303,38 +336,50 @@ class ParsedNWBFile:
         df_events = pd.concat([df_behav_events, df_print_events], axis=0, ignore_index=True)
         df_events.sort_values(by='timestamp', ascending=True, inplace=True)
         df_events.reset_index(drop=True, inplace=True)
+        self.pycontrol_events = df_events
 
-        return df_events
+        return
 
-    def parse_motion_sensors(self):
+    def try_to_parse_motion_sensors(self) -> None:
+        if 'Position' not in self.behavior.data_interfaces.keys():
+            warnings.warn(f'No motion data available')
+            self.pycontrol_motion_sensors = None
+            return
+
         if self.verbose:
             print("Parsing motion sensors")
-        ball_position_spatial_series = self.behav_module['Position'].spatial_series[
+        ball_position_spatial_series = self.behavior['Position'].spatial_series[
             'Ball position']
-        return _parse_spatial_series(ball_position_spatial_series)
+        self.pycontrol_motion_sensors = _parse_spatial_series(ball_position_spatial_series)
+        return
 
-    def parse_anipose_output(self):
+    def try_parsing_anipose_output(self):
+        if 'Pose estimation' not in self.behavior.data_interfaces.keys():
+            warnings.warn(f'No anipose data available')
+            self.anipose_data = None
+            return
         if self.verbose:
             print("Parsing anipose data")
-        anipose_data_dict = self.behav_module['Pose estimation'].pose_estimation_series
+        anipose_data_dict = self.behavior['Pose estimation'].pose_estimation_series
 
         parsed_anipose_data_dict = {}
         for key in anipose_data_dict.keys():
             parsed_anipose_data_dict[key] = _parse_pose_estimation_series(
                 anipose_data_dict[key])
+        self.anipose_data = parsed_anipose_data_dict
 
-        return parsed_anipose_data_dict
+        return
 
-    def parse_spiking_data(self):
+    def try_parsing_spike_data(self):
         if self.verbose:
-            print(f"Parsing spiking data. Found probes {list(self.ephys_module.keys())}")
+            print(f"Parsing spiking data. Found probes {list(self.ecephys.keys())}")
         spike_data_dict = {}
 
         # TODO: Make custom channel map option in case we dont agree with pinpoint
 
-        for probe_units in self.ephys_module.keys():
+        for probe_units in self.ecephys.keys():
             spike_data_dict[probe_units] = _parse_pynwb_probe(
-                probe_units=self.ephys_module[probe_units],
+                probe_units=self.ecephys[probe_units],
                 electrode_info=self.nwbfile.electrodes,
                 bin_size=self.bin_size
             )
