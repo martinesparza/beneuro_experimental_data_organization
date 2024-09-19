@@ -55,3 +55,10 @@ def test_nwb_conversion_on_data(session_name):
 
         assert "spike_times" in read_nwbfile.processing["ecephys"]["units_imec0"].colnames
         assert "waveform_mean" in read_nwbfile.processing["ecephys"]["units_imec0"].colnames
+
+        assert "imec0" in read_nwbfile.electrode_groups.keys()
+        assert read_nwbfile.electrode_groups["imec0"].location != "No pinpoint trajectory"
+
+        assert ('location', 'group', 'group_name', 'x', 'y', 'z', 'reference') == read_nwbfile.electrodes.colnames
+        assert all(value != 'nan' for value in read_nwbfile.electrodes.location[:])
+
