@@ -51,7 +51,7 @@ class AnimalProfileInterface(BaseDataInterface):
         """
         sessions_table = pd.read_csv(
             self.profile_file_path,
-            sep=r'\s+',
+            sep=r"\s+",
             comment="#",
         )
         sessions_table.replace(to_replace={"Sessions": {"%": ""}}, regex=True, inplace=True)

@@ -35,10 +35,11 @@ class Config(BaseSettings):
         return session_name[:4]
 
     def get_local_session_path(self, session_name: str, processed_or_raw: str) -> Path:
-        if processed_or_raw not in ['processed', 'raw']:
+        if processed_or_raw not in ["processed", "raw"]:
             raise ValueError(
-                f'{processed_or_raw} option not supported. Input must be either'
-                f'"processed" or "raw"')
+                f"{processed_or_raw} option not supported. Input must be either"
+                f'"processed" or "raw"'
+            )
         animal = self.get_animal_name(session_name)
         local_session_path = self.LOCAL_PATH / processed_or_raw / animal / session_name
         return local_session_path

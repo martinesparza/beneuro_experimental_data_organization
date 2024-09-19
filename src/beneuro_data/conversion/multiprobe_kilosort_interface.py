@@ -1,16 +1,16 @@
-from copy import deepcopy
 import warnings
+from copy import deepcopy
 from pathlib import Path
 from typing import Literal, Optional
 
 import numpy as np
 import pandas as pd
+import probeinterface as pi
 from neuroconv.datainterfaces import KiloSortSortingInterface
 from neuroconv.tools.spikeinterface import add_sorting_to_nwbfile
 from neuroconv.utils import DeepDict
 from pydantic import DirectoryPath
 from pynwb import NWBFile
-import probeinterface as pi
 
 
 def _try_loading_trajectory_file(raw_recording_path: Path) -> dict | None:
@@ -214,7 +214,6 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         )
 
         for probe_name in self.probe_names:
-
             # Get meta_file_path for probe_name
             meta_filepath = next(
                 (path for path in meta_filepaths if probe_name in str(path)), None
@@ -271,7 +270,6 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
         nwbfile: NWBFile,
         metadata: Optional[DeepDict] = None,
     ):
-
         self.add_probe_information_to_nwb(nwbfile)
 
         # Kilosort output will be saved in processing and not units

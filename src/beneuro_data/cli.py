@@ -87,7 +87,7 @@ def to_nwb(
 
     config = _load_config()
     subject_name = config.get_animal_name(session_name)
-    local_raw_session_path = config.get_local_session_path(session_name, 'raw')
+    local_raw_session_path = config.get_local_session_path(session_name, "raw")
 
     if not local_raw_session_path.absolute().is_dir():
         raise ValueError("Session path must be a directory.")
