@@ -221,6 +221,7 @@ class ParsedNWBFile:
 
     def __init__(self, nwbfile_path, verbose):
         with NWBHDF5IO(nwbfile_path, mode="r") as io:
+
             # General
             self.bin_size = 0.01
             self.verbose = verbose
@@ -236,15 +237,8 @@ class ParsedNWBFile:
             self.try_to_parse_processing_module('behavior')
             self.try_to_parse_processing_module('ecephys')
 
-            # Anipose data
-            self.try_to_parse_anipose()
-
-            # Pyaldata dataframe
+            # Initialize Pyaldata dataframe
             self.pyaldata_df = None
-
-
-
-            # Spiking data
 
     def try_to_include_subject_info(self):
         if hasattr(self.nwbfile, "subject"):
@@ -252,16 +246,19 @@ class ParsedNWBFile:
             self.session_datetime = self.nwbfile.session_start_time
         else:
             warnings.warn(f'NWBFile {self.nwbfile} does not have subject information')
+            self.subject_id = None
+            self.session_datetime = None
 
         return
 
     def try_to_parse_processing_module(self, processing_key: str):
-        if hasattr(self.nwbfile, processing_key):
+        if hasattr(self.nwbfile, "processing"):
             if processing_key in self.nwbfile.processing.keys():
-                setattr(self.nwbfile, processing_key, self.nwbfile.processing[processing_key].data_interfaces)
+                setattr(self, processing_key, self.nwbfile.processing[processing_key].data_interfaces)
                 if processing_key == 'behavior':
 
-                    # Pycontrol states and events. This is assumed to always be there
+                    # Pycontrol states and events. This is assumed to always be there if
+                    # there is a behavior processin module
                     self.parse_nwb_pycontrol_states()
                     self.parse_nwb_pycontrol_events()
 
@@ -269,10 +266,11 @@ class ParsedNWBFile:
                     self.try_to_parse_motion_sensors()
 
                     # Anipose data
-                    self.anipose_data = self.try_parsing_anipose_output()
+                    self.try_parsing_anipose_output()
 
                 elif processing_key == 'ecephys':
-                    self.spike_data = self.try_parsing_spike_data()
+                    # If there is a ephys processing module we assume there is spiking data
+                    self.parse_spike_data()
 
             else:
                 warnings.warn(f'NWBFile {self.nwbfile.processing} does not have {processing_key}')
@@ -341,7 +339,7 @@ class ParsedNWBFile:
         return
 
     def try_to_parse_motion_sensors(self) -> None:
-        if 'Position' not in self.behavior.data_interfaces.keys():
+        if 'Position' not in self.behavior.keys():
             warnings.warn(f'No motion data available')
             self.pycontrol_motion_sensors = None
             return
@@ -354,10 +352,11 @@ class ParsedNWBFile:
         return
 
     def try_parsing_anipose_output(self):
-        if 'Pose estimation' not in self.behavior.data_interfaces.keys():
+        if 'Pose estimation' not in self.behavior.keys():
             warnings.warn(f'No anipose data available')
             self.anipose_data = None
             return
+
         if self.verbose:
             print("Parsing anipose data")
         anipose_data_dict = self.behavior['Pose estimation'].pose_estimation_series
@@ -370,12 +369,10 @@ class ParsedNWBFile:
 
         return
 
-    def try_parsing_spike_data(self):
+    def parse_spike_data(self):
         if self.verbose:
             print(f"Parsing spiking data. Found probes {list(self.ecephys.keys())}")
         spike_data_dict = {}
-
-        # TODO: Make custom channel map option in case we dont agree with pinpoint
 
         for probe_units in self.ecephys.keys():
             spike_data_dict[probe_units] = _parse_pynwb_probe(
@@ -383,8 +380,8 @@ class ParsedNWBFile:
                 electrode_info=self.nwbfile.electrodes,
                 bin_size=self.bin_size
             )
-
-        return spike_data_dict
+        self.spike_data = spike_data_dict
+        return
 
     def add_pycontrol_states_to_df(self):
         # TODO: Fix time units
@@ -435,70 +432,72 @@ class ParsedNWBFile:
         return
 
     def add_motion_sensor_data_to_df(self):
-        # Bin timestamps
-        self.pycontrol_motion_sensors['timestamp_idx'] = np.floor(self.pycontrol_motion_sensors.timestamps.values[:] / 1000 / self.bin_size).astype(int)
-
-        # Add columns
-        self.pyaldata_df['motion_sensor_xy'] = np.nan
-
-        # Add data
-        self.pyaldata_df = _add_data_to_trial(
-            df_to_add_to=self.pyaldata_df,
-            new_data_column='motion_sensor_xy',
-            df_to_add_from=self.pycontrol_motion_sensors,
-            columns_to_read_from=['x', 'y'],
-            timestamp_column=None
-        )
-        return
-
-    def add_anipose_data_to_df(self):
-        for anipose_key, anipose_value in self.anipose_data.items():
+        if hasattr(self, "pycontrol_motion_sensors"):
             # Bin timestamps
-            # TODO: Predefine time units during nwb conversion
-            anipose_value['timestamp_idx'] = np.floor(anipose_value.timestamps.values[:] / self.bin_size).astype(int)
+            self.pycontrol_motion_sensors['timestamp_idx'] = np.floor(self.pycontrol_motion_sensors.timestamps.values[:] / 1000 / self.bin_size).astype(int)
 
             # Add columns
-            self.pyaldata_df[anipose_key] = np.nan
+            self.pyaldata_df['motion_sensor_xy'] = np.nan
 
             # Add data
             self.pyaldata_df = _add_data_to_trial(
                 df_to_add_to=self.pyaldata_df,
-                new_data_column=anipose_key,
-                df_to_add_from=anipose_value,
-                columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y', 'z'],
+                new_data_column='motion_sensor_xy',
+                df_to_add_from=self.pycontrol_motion_sensors,
+                columns_to_read_from=['x', 'y'],
                 timestamp_column=None
             )
-
         return
 
-    def add_spiking_data_to_df(self):
-        for probe_key in self.spike_data.keys():
-            for brain_area_key, brain_area_spike_data in self.spike_data[probe_key].items():
+    def add_anipose_data_to_df(self):
+        if hasattr(self, "anipose_data"):
+            for anipose_key, anipose_value in self.anipose_data.items():
+                # Bin timestamps
+                # TODO: Predefine time units during nwb conversion
+                anipose_value['timestamp_idx'] = np.floor(anipose_value.timestamps.values[:] / self.bin_size).astype(int)
 
-                # Add unit guide
-                self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['unit_guide']] * len(self.pyaldata_df)
-
-                # Add unit guide
-                self.pyaldata_df[f'{brain_area_key}_KSLabel'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
-
-                # TODO: Add spike data
-                self.pyaldata_df[f'{brain_area_key}_spikes'] = np.nan
-                tmp_df = pd.DataFrame(brain_area_spike_data['spikes'].T)  # Transpose
-                tmp_df['timestamp_idx'] = tmp_df.index  # Add timestamp for the following function
+                # Add columns
+                self.pyaldata_df[anipose_key] = np.nan
 
                 # Add data
                 self.pyaldata_df = _add_data_to_trial(
                     df_to_add_to=self.pyaldata_df,
-                    new_data_column=f'{brain_area_key}_spikes',
-                    df_to_add_from=tmp_df,
-                    columns_to_read_from=[col for col in tmp_df.columns if col != 'timestamp_idx'],
+                    new_data_column=anipose_key,
+                    df_to_add_from=anipose_value,
+                    columns_to_read_from='angle' if 'angle' in anipose_key else ['x', 'y', 'z'],
                     timestamp_column=None
                 )
+
+        return
+
+    def add_spiking_data_to_df(self):
+        if hasattr(self, "spike_data"):
+            for probe_key in self.spike_data.keys():
+                for brain_area_key, brain_area_spike_data in self.spike_data[probe_key].items():
+
+                    # Add unit guide
+                    self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['unit_guide']] * len(self.pyaldata_df)
+
+                    # Add unit guide
+                    self.pyaldata_df[f'{brain_area_key}_KSLabel'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
+
+                    self.pyaldata_df[f'{brain_area_key}_spikes'] = np.nan
+                    tmp_df = pd.DataFrame(brain_area_spike_data['spikes'].T)  # Transpose
+                    tmp_df['timestamp_idx'] = tmp_df.index  # Add timestamp for the following function
+
+                    # Add data
+                    self.pyaldata_df = _add_data_to_trial(
+                        df_to_add_to=self.pyaldata_df,
+                        new_data_column=f'{brain_area_key}_spikes',
+                        df_to_add_from=tmp_df,
+                        columns_to_read_from=[col for col in tmp_df.columns if col != 'timestamp_idx'],
+                        timestamp_column=None
+                    )
         return
 
     def add_mouse_and_datetime(self):
         self.pyaldata_df['mouse'] = [self.subject_id] * len(self.pyaldata_df)
-        self.pyaldata_df['date_time'] = [self.session_datetime.strftime('%Y-%m-%d %H:%M:%S %Z%z')] * len(self.pyaldata_df)
+        self.pyaldata_df['date_time'] = [self.session_datetime.strftime('%Y-%m-%d %H:%M:%S %Z%z')] * len(self.pyaldata_df) if self.session_datetime is not None else [None] * len(self.pyaldata_df)
         return
 
     def run_conversion(self):

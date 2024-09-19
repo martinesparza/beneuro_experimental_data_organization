@@ -29,11 +29,15 @@ class Config(BaseSettings):
     )
     EXTENSIONS_TO_RENAME_AND_UPLOAD: tuple[str, ...] = (".txt",)
 
+    @staticmethod
+    def get_animal_name(session_name) -> str:
+        return session_name[:4]
+
     def get_local_session_path(self, session_name: str, processed_or_raw: str):
         if processed_or_raw not in ['processed', 'raw']:
             raise ValueError(f'{processed_or_raw} option not supported. Input must be either'
                              f'"processed" or "raw"')
-        animal = session_name[:4]
+        animal = self.get_animal_name(session_name)
         local_session_path = self.LOCAL_PATH / processed_or_raw / animal / session_name
         return local_session_path
 
