@@ -229,6 +229,7 @@ class ParsedNWBFile:
             # Nwb file
             self.nwbfile_path = nwbfile_path
             self.nwbfile = io.read()
+            self.session_datetime = self.nwbfile.session_start_time
 
             # Subject data
             self.try_to_include_subject_info()
@@ -242,13 +243,12 @@ class ParsedNWBFile:
 
     def try_to_include_subject_info(self):
         if hasattr(self.nwbfile, "subject"):
-            self.subject_id = self.nwbfile.subject.subject_id
-            self.session_datetime = self.nwbfile.session_start_time
-        else:
-            warnings.warn(f'NWBFile {self.nwbfile} does not have subject information')
-            self.subject_id = None
-            self.session_datetime = None
+            if self.nwbfile.subject is not None:
+                self.subject_id = self.nwbfile.subject.subject_id
+                return
 
+        warnings.warn(f'NWBFile {self.nwbfile_path.name} does not have subject information')
+        self.subject_id = None
         return
 
     def try_to_parse_processing_module(self, processing_key: str):
@@ -273,9 +273,9 @@ class ParsedNWBFile:
                     self.parse_spike_data()
 
             else:
-                warnings.warn(f'NWBFile {self.nwbfile.processing} does not have {processing_key}')
+                warnings.warn(f'NWBFile {self.nwbfile.processing.keys()} does not have {processing_key}')
         else:
-            warnings.warn(f'NWBFile {self.nwbfile} does not have processing module')
+            warnings.warn(f'NWBFile {self.nwbfile_path.name} does not have processing module')
 
         return
 
@@ -354,7 +354,6 @@ class ParsedNWBFile:
     def try_parsing_anipose_output(self):
         if 'Pose estimation' not in self.behavior.keys():
             warnings.warn(f'No anipose data available')
-            self.anipose_data = None
             return
 
         if self.verbose:
