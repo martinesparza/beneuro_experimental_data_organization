@@ -51,7 +51,8 @@ def _try_loading_trajectory_file(raw_recording_path: Path) -> dict | None:
 
 
 def _load_channel_map_information_from_pinpoint_probe(
-    channel_map__file_path: Path, pinpoint_probe_name: str) -> pd.DataFrame:
+    channel_map__file_path: Path, pinpoint_probe_name: str
+) -> pd.DataFrame:
     """
     Extract the brain area of each electrode per probe
 
@@ -88,7 +89,9 @@ def _load_channel_map_information_from_pinpoint_probe(
     return df
 
 
-def _create_channel_map(pinpoint_trajectory_dict: dict, raw_recording_path: Path) -> dict | None:
+def _create_channel_map(
+    pinpoint_trajectory_dict: dict, raw_recording_path: Path
+) -> dict | None:
     """
     Function to create a dictionary (channel map) where each probe (keys) has a pd.DataFrame
     (value) relating electrode to brain area. Returns None if no *channel_map.txt file is available.
@@ -120,7 +123,8 @@ def _create_channel_map(pinpoint_trajectory_dict: dict, raw_recording_path: Path
     for probe in pinpoint_trajectory_dict.keys():
         pinpoint_probe_name = pinpoint_trajectory_dict[probe].split(":")[0]
         channel_map[probe] = _load_channel_map_information_from_pinpoint_probe(
-            channel_map__file_path=pinpoint_channel_map_file[0], pinpoint_probe_name=pinpoint_probe_name
+            channel_map__file_path=pinpoint_channel_map_file[0],
+            pinpoint_probe_name=pinpoint_probe_name,
         )
 
     return channel_map
@@ -207,7 +211,9 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
                 description=f'{probe.annotations["model_name"]}. Location is the output from '
                 f"pinpoint and corresponds to the targeted brain area",
                 location=(
-                    pinpoint_trajectory_dict[probe_name] if pinpoint_trajectory_dict else "No pinpoint trajectory"
+                    pinpoint_trajectory_dict[probe_name]
+                    if pinpoint_trajectory_dict
+                    else "No pinpoint trajectory"
                 ),
                 device=nwbfile.devices[probe_name],
             )
