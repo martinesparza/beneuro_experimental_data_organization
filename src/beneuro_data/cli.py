@@ -23,9 +23,15 @@ app = typer.Typer()
 
 @app.command()
 def to_nwb(
-    session_name: Annotated[
-        str,
+    local_session_path: Annotated[
+        Path,
         typer.Argument(help="Path to session directory. Can be relative or absolute"),
+    ],
+    subject_name: Annotated[
+        str,
+        typer.Argument(
+            help="Name of the subject the session belongs to. (Used for confirmation.)"
+        ),
     ],
     run_kilosort: Annotated[
         bool,
@@ -72,28 +78,26 @@ def to_nwb(
 
     \b
     Basic usage:
-        `bnd to-nwb M027_2024_03_20_11_30`
+        `bnd to-nwb . M037`
 
     \b
     Run Kilosort:
-        `bnd to-nwb M027_2024_03_20_11_30 --kilosort`
+        `bnd to-nwb . M037 --kilosort`
 
     \b
     Running Kilosort on only selected probes:
-        `bnd to-nwb M027_2024_03_20_11_30 --sort-probe imec0 --sort-probe imec1`
+        `bnd to-nwb . M037 --sort-probe imec0 --sort-probe imec1`
     """
     # this will throw an error if the dependencies are not available
     from beneuro_data.conversion.convert_to_nwb import convert_to_nwb
 
     config = _load_config()
-    subject_name = config.get_animal_name(session_name)
-    local_raw_session_path = config.get_local_session_path(session_name, "raw")
 
-    if not local_raw_session_path.absolute().is_dir():
+    if not local_session_path.absolute().is_dir():
         raise ValueError("Session path must be a directory.")
-    if not local_raw_session_path.absolute().exists():
+    if not local_session_path.absolute().exists():
         raise ValueError("Session path does not exist.")
-    if not local_raw_session_path.absolute().is_relative_to(config.LOCAL_PATH):
+    if not local_session_path.absolute().is_relative_to(config.LOCAL_PATH):
         raise ValueError("Session path must be inside the local root folder.")
 
     if len(sort_probe) != 0:
@@ -103,15 +107,15 @@ def to_nwb(
         stream_names_to_process = [f"{probe}.ap" for probe in sort_probe]
         # check that they are all in the session folder somewhere
         for stream_name in stream_names_to_process:
-            if len(list(local_raw_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
+            if len(list(local_session_path.glob(f"**/*{stream_name}.bin"))) == 0:
                 raise ValueError(
-                    f"No file found for {stream_name} in {local_raw_session_path.absolute()}"
+                    f"No file found for {stream_name} in {local_session_path.absolute()}"
                 )
     else:
         stream_names_to_process = None
 
     convert_to_nwb(
-        local_raw_session_path.absolute(),
+        local_session_path.absolute(),
         subject_name,
         config.LOCAL_PATH,
         config.WHITELISTED_FILES_IN_ROOT,
