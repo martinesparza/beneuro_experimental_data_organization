@@ -78,7 +78,23 @@ def _add_unit_counter_to_unit_guide(unit_guide):
     return new_unit_guide
 
 
-def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
+def _parse_pynwb_probe(probe_units: Units, electrode_info: pd.DataFrame, bin_size: float) -> dict:
+    """
+    Parse nwb Units object to bin spikes, reorder units and extract kilosort labels
+
+    Parameters
+    ----------
+    probe_units :
+        Nwb units object containing units table.
+    electrode_info :
+        Electrode dataframe containing brain location of each electrode
+    bin_size :
+        Bin size in seconds to use when binning the data
+
+    Returns
+    -------
+
+    """
 
     # This returns a neurons x bin array of 0s and 1s
     binned_spikes = _bin_spikes(probe_units, bin_size)
@@ -125,7 +141,7 @@ def _parse_pynwb_probe(probe_units: Units, electrode_info, bin_size: float):
 
         # Take neurons that are brain area specific and them sort them according to unit guide
         brain_area_spikes_and_chan_best[brain_area] = {'spikes': binned_spikes[brain_area_neurons, :][sorted_chan_best_indices, :]}
-        brain_area_spikes_and_chan_best[brain_area]['unit_guide'] = sorted_chan_best
+        brain_area_spikes_and_chan_best[brain_area]['chan_best'] = sorted_chan_best
         brain_area_spikes_and_chan_best[brain_area]['KSLabel'] = probe_units.KSLabel[brain_area_neurons][sorted_chan_best_indices]
 
     return brain_area_spikes_and_chan_best
@@ -199,7 +215,29 @@ def _parse_spatial_series(spatial_series: SpatialSeries) -> pd.DataFrame:
     return df
 
 
-def _add_data_to_trial(df_to_add_to, new_data_column, df_to_add_from, columns_to_read_from, timestamp_column=None):
+def _add_data_to_trial(df_to_add_to: pd.DataFrame,
+                       new_data_column: str, df_to_add_from: pd.DataFrame,
+                       columns_to_read_from: str | list, timestamp_column=None) -> pd.DataFrame:
+    """
+    Data-type agnostic function to read data from ParsedNWBfile and add it to pyaldata dataframe
+
+    Parameters
+    ----------
+    df_to_add_to :
+        pd.Dataframe to add new data to. Usually self.pyaldata_df
+    new_data_column :
+        Name of the new data column
+    df_to_add_from :
+        pd.Dataframe with raw data from nwb file
+    columns_to_read_from :
+        Column names from which to extract data
+    timestamp_column :
+        Timestamp column depending on if you are adding timestamps into pyaldata or not
+
+    Returns
+    -------
+
+    """
     for index, row in df_to_add_to.iterrows():
         trial_specific_events = df_to_add_from[
             (df_to_add_from['timestamp_idx'] >= row['idx_trial_start']) &
@@ -241,7 +279,13 @@ class ParsedNWBFile:
             # Initialize Pyaldata dataframe
             self.pyaldata_df = None
 
-    def try_to_include_subject_info(self):
+    def try_to_include_subject_info(self) -> None:
+        """
+        Try to add subject information to instance
+
+        Returns
+        -------
+        """
         if hasattr(self.nwbfile, "subject"):
             if self.nwbfile.subject is not None:
                 self.subject_id = self.nwbfile.subject.subject_id
@@ -251,7 +295,19 @@ class ParsedNWBFile:
         self.subject_id = None
         return
 
-    def try_to_parse_processing_module(self, processing_key: str):
+    def try_to_parse_processing_module(self, processing_key: str) -> None:
+        """
+        Go through nwb processing module and parse 'behavior' and 'ecephys' if they are available
+
+        Parameters
+        ----------
+        processing_key :
+            Module to process. Can be either `behavior` or `ecephys`
+
+        Returns
+        -------
+
+        """
         if hasattr(self.nwbfile, "processing"):
             if processing_key in self.nwbfile.processing.keys():
                 setattr(self, processing_key, self.nwbfile.processing[processing_key].data_interfaces)
@@ -281,12 +337,12 @@ class ParsedNWBFile:
 
     def parse_nwb_pycontrol_states(self) -> None:
         """
-        Parse pycontrol output from behavioural processing module of .nwb file
+        Parse pycontrol output from behavioural processing module of .nwb file.
+
+        Creates a dictionary containing states and the timestamps
 
         Returns
         -------
-        Dict :
-            Dictionary containing states, event, and prints of pycontrol during execution
 
         """
         if self.verbose:
@@ -298,6 +354,15 @@ class ParsedNWBFile:
         return
 
     def parse_nwb_pycontrol_events(self) -> None:
+        """
+        Iterate through pycontrol events and create dataframe with values and timestamps.
+
+        Combines print events and normal events
+
+        Returns
+        -------
+
+        """
         if self.verbose:
             print("Parsing pycontrol events")
 
@@ -339,6 +404,13 @@ class ParsedNWBFile:
         return
 
     def try_to_parse_motion_sensors(self) -> None:
+        """
+        Add motion data to instance as a x, y array
+
+        Returns
+        -------
+
+        """
         if 'Position' not in self.behavior.keys():
             warnings.warn(f'No motion data available')
             self.pycontrol_motion_sensors = None
@@ -352,6 +424,13 @@ class ParsedNWBFile:
         return
 
     def try_parsing_anipose_output(self):
+        """
+        Add anipose data (xyz) or angle to instance as a dictionary with each keypoint
+
+        Returns
+        -------
+
+        """
         if 'Pose estimation' not in self.behavior.keys():
             warnings.warn(f'No anipose data available')
             return
@@ -369,6 +448,14 @@ class ParsedNWBFile:
         return
 
     def parse_spike_data(self):
+        """
+        Parse spiking data from each probe and assign a dictionary of spikes, chan_best, and
+        kilosort labels ('good' or 'mua')
+
+        Returns
+        -------
+
+        """
         if self.verbose:
             print(f"Parsing spiking data. Found probes {list(self.ecephys.keys())}")
         spike_data_dict = {}
@@ -475,7 +562,7 @@ class ParsedNWBFile:
                 for brain_area_key, brain_area_spike_data in self.spike_data[probe_key].items():
 
                     # Add unit guide
-                    self.pyaldata_df[f'{brain_area_key}_unit_guide'] = [brain_area_spike_data['unit_guide']] * len(self.pyaldata_df)
+                    self.pyaldata_df[f'{brain_area_key}_chan_best'] = [brain_area_spike_data['chan_best']] * len(self.pyaldata_df)
 
                     # Add unit guide
                     self.pyaldata_df[f'{brain_area_key}_KSLabel'] = [brain_area_spike_data['KSLabel']] * len(self.pyaldata_df)
