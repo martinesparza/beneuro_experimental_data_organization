@@ -92,6 +92,10 @@ def _load_channel_map_information_from_pinpoint_probe(
     -------
     Dataframe containing brain area of each electrode
 
+    Raises
+    ------
+    ValueError
+        If the given probe name is not found in the channel map.
     """
 
     with open(channel_map_file_path, "r") as file:
