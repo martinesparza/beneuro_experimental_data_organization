@@ -123,8 +123,7 @@ def _load_channel_map_information_from_pinpoint_probe(
         for entry in pinpoint_channel_map
     ]
 
-    df = pd.DataFrame(data)
-    return df
+    return pd.DataFrame(data)
 
 
 def _create_channel_map(
