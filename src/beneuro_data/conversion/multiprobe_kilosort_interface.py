@@ -89,7 +89,7 @@ def _load_channel_map_information_from_pinpoint_probe(
 
     Returns
     -------
-    Dataframe containing bran area of each electrode
+    Dataframe containing brain area of each electrode
 
     """
 
