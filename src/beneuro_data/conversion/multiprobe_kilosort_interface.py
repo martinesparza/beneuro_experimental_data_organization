@@ -143,7 +143,10 @@ def _create_channel_map(
     Returns
     -------
     Dictionary of channel map for each probe
-
+        If the channel map file is found.
+    None
+        If the channel map file is not found or too many channel map files are found.
+        If there is a problem loading channel map data.
     """
 
     pinpoint_channel_map_file = list(raw_recording_path.glob("*channel_map.txt"))
