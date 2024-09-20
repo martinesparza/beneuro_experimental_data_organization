@@ -212,6 +212,7 @@ class MultiProbeKiloSortInterface(KiloSortSortingInterface):
 
         Returns
         -------
+        None
         """
 
         raw_recording_path = Path(str(self.folder_path).replace("processed", "raw"))
