@@ -78,7 +78,8 @@ def _load_channel_map_information_from_pinpoint_probe(
     channel_map_file_path: Path, pinpoint_probe_name: str
 ) -> pd.DataFrame:
     """
-    Extract the brain area of each electrode per probe
+    Extract the brain area of each electrode on a given probe from a
+    channel map file saved by Pinpoint.
 
     Parameters
     ----------
