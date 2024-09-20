@@ -36,7 +36,7 @@ def to_nwb(
     run_kilosort: Annotated[
         bool,
         typer.Option("--kilosort/--no-kilosort", help="Run Kilosort 4 or not"),
-    ] = True,
+    ] = False,
     sort_probe: Annotated[
         Optional[List[str]],
         typer.Option(
@@ -78,15 +78,15 @@ def to_nwb(
 
     \b
     Basic usage:
-        `bnd to-nwb . M027`
+        `bnd to-nwb . M037`
 
     \b
-    Skip running Kilosort:
-        `bnd to-nwb . M027 --no-kilosort`
+    Run Kilosort:
+        `bnd to-nwb . M037 --kilosort`
 
     \b
     Running Kilosort on only selected probes:
-        `bnd to-nwb . M027 --sort-probe imec0 --sort-probe imec1`
+        `bnd to-nwb . M037 --sort-probe imec0 --sort-probe imec1`
     """
     # this will throw an error if the dependencies are not available
     from beneuro_data.conversion.convert_to_nwb import convert_to_nwb
